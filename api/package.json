@@ -1,0 +1,16 @@
+{
+  "name": "truck-on-rute-api",
+  "version": "2.6.0",
+  "description": "API de Truck on Rute: recibe y entrega la última ubicación del camión",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "simular": "node simular.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "mysql2": "^3.11.0",
+    "leaflet": "^1.9.4"
+  }
+}

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truck on Route · Arquitectura del sistema</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root, [data-theme="dark"] {
+  --bg:#0b1120; --card:#0f172a; --border:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --dim:#64748b; --grid:#1e293b; --mask:#0f172a;
+  --fe-f:rgba(8,51,68,.55); --fe-s:#22d3ee; --fe-t:#67e8f9;
+  --be-f:rgba(6,78,59,.5); --be-s:#34d399; --be-t:#6ee7b7;
+  --db-f:rgba(46,16,101,.5); --db-s:#a78bfa; --db-t:#c4b5fd;
+  --cl-f:rgba(69,26,3,.5); --cl-s:#fbbf24; --cl-t:#fcd34d;
+  --se-f:rgba(76,5,25,.5); --se-s:#fb7185; --se-t:#fda4af;
+  --mb-f:rgba(67,20,7,.55); --mb-s:#fb923c; --mb-t:#fdba74;
+  --ex-f:rgba(30,41,59,.6); --ex-s:#94a3b8; --ex-t:#cbd5e1;
+  --arrow:#64748b; --emph:#34d399;
+}
+[data-theme="light"] {
+  --bg:#f8fafc; --card:#ffffff; --border:#e2e8f0; --text:#0f172a; --muted:#475569; --dim:#94a3b8; --grid:#eef2f7; --mask:#ffffff;
+  --fe-f:rgba(207,250,254,.7); --fe-s:#0891b2; --fe-t:#0e7490;
+  --be-f:rgba(209,250,229,.7); --be-s:#059669; --be-t:#047857;
+  --db-f:rgba(237,233,254,.75); --db-s:#7c3aed; --db-t:#6d28d9;
+  --cl-f:rgba(254,243,199,.75); --cl-s:#d97706; --cl-t:#b45309;
+  --se-f:rgba(255,228,230,.75); --se-s:#e11d48; --se-t:#be123c;
+  --mb-f:rgba(255,237,213,.8); --mb-s:#ea580c; --mb-t:#c2410c;
+  --ex-f:rgba(241,245,249,.9); --ex-s:#64748b; --ex-t:#334155;
+  --arrow:#94a3b8; --emph:#059669;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:'JetBrains Mono',ui-monospace,monospace; padding:32px 16px 24px; }
+.wrap { max-width:1180px; margin:0 auto; }
+header h1 { font-size:22px; margin:0 0 6px; display:flex; align-items:center; gap:10px; }
+header p { margin:0 0 20px; color:var(--muted); font-size:13px; }
+.dot { width:10px; height:10px; border-radius:50%; background:var(--emph); box-shadow:0 0 0 0 var(--emph); animation:pulso 2s infinite; }
+@keyframes pulso { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.6)} 70%{box-shadow:0 0 0 10px rgba(52,211,153,0)} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} }
+.diagrama { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; overflow-x:auto; }
+.diagrama svg { width:100%; min-width:760px; height:auto; display:block; font-family:'JetBrains Mono',ui-monospace,monospace; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin-top:18px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.card-header { display:flex; align-items:center; gap:8px; }
+.card-header h3 { margin:0; font-size:13px; }
+.card ul { list-style:none; padding:0; margin:10px 0 0; color:var(--muted); font-size:12px; line-height:1.7; }
+.card-dot { width:9px; height:9px; border-radius:50%; }
+.card-dot.cyan{background:#22d3ee}.card-dot.emerald{background:#34d399}.card-dot.violet{background:#a78bfa}.card-dot.amber{background:#fbbf24}.card-dot.rose{background:#fb7185}.card-dot.orange{background:#fb923c}.card-dot.slate{background:#94a3b8}
+footer { margin-top:18px; color:var(--dim); font-size:11px; text-align:center; }
+.toolbar { position:fixed; top:12px; right:12px; display:flex; gap:8px; z-index:10; }
+.toolbar button { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font:inherit; font-size:12px; cursor:pointer; }
+.menu { position:relative; }
+.menu-lista { display:none; position:absolute; right:0; top:34px; background:var(--card); border:1px solid var(--border); border-radius:8px; min-width:200px; overflow:hidden; }
+.menu-lista.abierto { display:block; }
+.menu-lista button { display:block; width:100%; text-align:left; border:0; border-radius:0; padding:8px 12px; }
+.menu-lista button:hover { background:var(--border); }
+/* clases del SVG */
+.c-grid { stroke:var(--grid); fill:none; }
+.c-mask { fill:var(--mask); }
+.c-frontend{fill:var(--fe-f);stroke:var(--fe-s)} .t-frontend{fill:var(--fe-t)}
+.c-backend{fill:var(--be-f);stroke:var(--be-s)} .t-backend{fill:var(--be-t)}
+.c-database{fill:var(--db-f);stroke:var(--db-s)} .t-database{fill:var(--db-t)}
+.c-cloud{fill:var(--cl-f);stroke:var(--cl-s)} .t-cloud{fill:var(--cl-t)}
+.c-security{fill:var(--se-f);stroke:var(--se-s)} .t-security{fill:var(--se-t)}
+.c-messagebus{fill:var(--mb-f);stroke:var(--mb-s)} .t-messagebus{fill:var(--mb-t)}
+.c-external{fill:var(--ex-f);stroke:var(--ex-s)} .t-external{fill:var(--ex-t)}
+.c-security-group{fill:none;stroke:var(--se-s);stroke-dasharray:5 4}
+.c-region{fill:none;stroke:var(--cl-s);stroke-dasharray:8 5}
+.t-primary{fill:var(--text)} .t-muted{fill:var(--muted)} .t-dim{fill:var(--dim)}
+.a-default{stroke:var(--arrow);fill:none} .a-emphasis{stroke:var(--emph);fill:none}
+.a-security{stroke:var(--se-s);fill:none;stroke-dasharray:5 4} .a-dashed{stroke:var(--arrow);fill:none;stroke-dasharray:4 4}
+.m-default{fill:var(--arrow)} .m-emphasis{fill:var(--emph)} .m-security{fill:var(--se-s)}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button id="tema" type="button">☀︎ Claro</button>
+  <div class="menu">
+    <button id="exportar" type="button">Exportar ▾</button>
+    <div class="menu-lista" id="lista">
+      <button type="button" data-f="copiar">Copiar PNG</button>
+      <button type="button" data-f="png">Descargar PNG</button>
+      <button type="button" data-f="jpeg">Descargar JPEG</button>
+      <button type="button" data-f="webp">Descargar WebP</button>
+      <button type="button" data-f="svg">Descargar SVG</button>
+    </div>
+  </div>
+</div>
+<div class="wrap">
+<header><h1><span class="dot"></span>Truck on Route · Arquitectura del sistema</h1><p>a) Estructura del proyecto en la versión 2.9: dispositivo GPS, API, datos, app Android y panel web</p></header>
+<div class="diagrama">
+<svg viewBox="0 0 1100 690" role="img" aria-label="Truck on Route · Arquitectura del sistema"><defs>
+<pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" class="c-grid" stroke-width="1"/></pattern>
+<marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-default"/></marker>
+<marker id="arrowhead-emphasis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-emphasis"/></marker>
+<marker id="arrowhead-security" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-security"/></marker>
+<marker id="arrowhead-dashed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-default"/></marker>
+</defs><rect width="1100" height="690" fill="url(#grid)"/><rect x="320" y="56" width="450" height="474" rx="10" class="c-region" stroke-width="1"/><text x="332" y="74" class="t-cloud" font-size="8" font-weight="400" text-anchor="start">Servidor · hoy: PC local (localhost:3000) · plan: Hostinger VPS KVM 1</text><rect x="20" y="560" width="1060" height="110" rx="10" class="c-region" stroke-width="1"/><text x="32" y="578" class="t-cloud" font-size="8" font-weight="400" text-anchor="start">Cómo se construyó: gestión, IA y SDD</text><path d="M220 150 H358" class="a-emphasis" stroke-width="1.5" marker-end="url(#arrowhead-emphasis)"/><text x="270" y="120" class="t-backend" font-size="8" font-weight="400" text-anchor="middle">POST /ubicacion</text><text x="270" y="132" class="t-backend" font-size="8" font-weight="400" text-anchor="middle">cada 10 s</text><path d="M220 260 H290 V170 H358" class="a-dashed" stroke-width="1" marker-end="url(#arrowhead-dashed)"/><text x="255" y="252" class="t-dim" font-size="7" font-weight="400" text-anchor="middle">pruebas sin GPS</text><path d="M410 190 V228" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/><path d="M545 190 V228" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/><path d="M605 259 H618" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/><path d="M410 288 V338" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/><path d="M545 288 V338" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/><path d="M440 288 V316 H680 V338" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/><text x="612" y="312" class="t-dim" font-size="7" font-weight="400" text-anchor="middle">si hay .env</text><path d="M840 140 H772" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/><text x="806" y="132" class="t-dim" font-size="7" font-weight="400" text-anchor="middle">GET /ubicacion</text><text x="806" y="158" class="t-dim" font-size="7" font-weight="400" text-anchor="middle">GET /avisos</text><path d="M840 238 H805 V172 H772" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/><path d="M1060 358 H1082 V142 H1062" class="a-dashed" stroke-width="1" marker-end="url(#arrowhead-dashed)"/><path d="M840 472 H742" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/><text x="790" y="464" class="t-dim" font-size="7" font-weight="400" text-anchor="middle">navegador</text><path d="M350 472 H334 V172 H348" class="a-dashed" stroke-width="1" marker-end="url(#arrowhead-dashed)"/><text x="330" y="520" class="t-dim" font-size="7" font-weight="400" text-anchor="start">fetch + token</text><rect x="40" y="110" width="180" height="80" rx="6" class="c-mask"/><rect x="40" y="110" width="180" height="80" rx="6" class="c-cloud" stroke-width="1.5"/><text x="130.0" y="138.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">ESP32 + GPS NEO-6M</text><text x="130.0" y="153.0" class="t-muted" font-size="9" text-anchor="middle">firmware C++ (Arduino IDE)</text><text x="130.0" y="166.0" class="t-muted" font-size="9" text-anchor="middle">TinyGPSPlus · Serial2 9600</text><rect x="244" y="141" width="92" height="18" rx="4" class="c-messagebus" stroke-width="1"/><text x="290" y="154" class="t-messagebus" font-size="7" font-weight="400" text-anchor="middle">WiFi / SIM800L</text><rect x="40" y="230" width="180" height="60" rx="6" class="c-mask"/><rect x="40" y="230" width="180" height="60" rx="6" class="c-external" stroke-width="1.5"/><text x="130.0" y="248.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Simulador</text><text x="130.0" y="263.0" class="t-muted" font-size="9" text-anchor="middle">npm run simular</text><text x="130.0" y="276.0" class="t-muted" font-size="9" text-anchor="middle">fuente: simulacion</text><rect x="350" y="110" width="400" height="80" rx="6" class="c-mask"/><rect x="350" y="110" width="400" height="80" rx="6" class="c-backend" stroke-width="1.5"/><text x="550.0" y="138.0" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">API Node.js + Express 5</text><text x="550.0" y="153.0" class="t-muted" font-size="9" text-anchor="middle">server.js · app.js · puerto 3000</text><text x="550.0" y="166.0" class="t-muted" font-size="9" text-anchor="middle">28 pruebas con node --test</text><rect x="350" y="230" width="120" height="58" rx="6" class="c-mask"/><rect x="350" y="230" width="120" height="58" rx="6" class="c-backend" stroke-width="1.5"/><text x="410.0" y="247.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Ubicación</text><text x="410.0" y="262.0" class="t-muted" font-size="9" text-anchor="middle">validar.js · geo.js</text><text x="410.0" y="275.0" class="t-muted" font-size="9" text-anchor="middle">historial y velocidad</text><rect x="485" y="230" width="120" height="58" rx="6" class="c-mask"/><rect x="485" y="230" width="120" height="58" rx="6" class="c-backend" stroke-width="1.5"/><text x="545.0" y="247.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">rutas-v3.js</text><text x="545.0" y="262.0" class="t-muted" font-size="9" text-anchor="middle">sesión · admin</text><text x="545.0" y="275.0" class="t-muted" font-size="9" text-anchor="middle">chofer · avisos</text><rect x="620" y="230" width="120" height="58" rx="6" class="c-mask"/><rect x="620" y="230" width="120" height="58" rx="6" class="c-security" stroke-width="1.5"/><text x="680.0" y="247.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">seguridad.js</text><text x="680.0" y="262.0" class="t-muted" font-size="9" text-anchor="middle">contraseña scrypt</text><text x="680.0" y="275.0" class="t-muted" font-size="9" text-anchor="middle">token de 7 días</text><rect x="350" y="340" width="120" height="70" rx="6" class="c-mask"/><rect x="350" y="340" width="120" height="70" rx="6" class="c-database" stroke-width="1.5"/><text x="410.0" y="363.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Memoria</text><text x="410.0" y="378.0" class="t-muted" font-size="9" text-anchor="middle">última ubicación</text><text x="410.0" y="391.0" class="t-muted" font-size="9" text-anchor="middle">e historial (500)</text><rect x="485" y="340" width="120" height="70" rx="6" class="c-mask"/><rect x="485" y="340" width="120" height="70" rx="6" class="c-database" stroke-width="1.5"/><text x="545.0" y="355.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">tor-datos.json</text><text x="545.0" y="370.0" class="t-muted" font-size="9" text-anchor="middle">usuarios · camiones</text><text x="545.0" y="383.0" class="t-muted" font-size="9" text-anchor="middle">rutas · recorridos</text><text x="545.0" y="396.0" class="t-muted" font-size="9" text-anchor="middle">mensajes · avisos</text><rect x="620" y="340" width="120" height="70" rx="6" class="c-mask"/><rect x="620" y="340" width="120" height="70" rx="6" class="c-database" stroke-width="1.5"/><text x="680.0" y="355.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">MySQL 8</text><text x="680.0" y="370.0" class="t-muted" font-size="9" text-anchor="middle">camiones</text><text x="680.0" y="383.0" class="t-muted" font-size="9" text-anchor="middle">ubicaciones</text><text x="680.0" y="396.0" class="t-muted" font-size="9" text-anchor="middle">(opcional, .env)</text><rect x="350" y="445" width="390" height="55" rx="6" class="c-mask"/><rect x="350" y="445" width="390" height="55" rx="6" class="c-frontend" stroke-width="1.5"/><text x="545.0" y="468.5" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Panel del administrador  /panel</text><text x="545.0" y="483.5" class="t-muted" font-size="9" text-anchor="middle">HTML + JavaScript + Leaflet · lo sirve la misma API</text><rect x="840" y="100" width="220" height="84" rx="6" class="c-mask"/><rect x="840" y="100" width="220" height="84" rx="6" class="c-frontend" stroke-width="1.5"/><text x="950.0" y="122.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">App Android · Ciudadano</text><text x="950.0" y="137.0" class="t-muted" font-size="9" text-anchor="middle">Kotlin + Jetpack Compose</text><text x="950.0" y="150.0" class="t-muted" font-size="9" text-anchor="middle">mapa osmdroid · avisos</text><text x="950.0" y="163.0" class="t-muted" font-size="9" text-anchor="middle">aviso a 500 m (cada 5 min)</text><rect x="840" y="208" width="220" height="62" rx="6" class="c-mask"/><rect x="840" y="208" width="220" height="62" rx="6" class="c-frontend" stroke-width="1.5"/><text x="950.0" y="227.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">App Android · Chofer</text><text x="950.0" y="242.0" class="t-muted" font-size="9" text-anchor="middle">su recorrido e indicaciones</text><text x="950.0" y="255.0" class="t-muted" font-size="9" text-anchor="middle">Iniciar / Terminar ruta</text><rect x="840" y="330" width="220" height="56" rx="6" class="c-mask"/><rect x="840" y="330" width="220" height="56" rx="6" class="c-external" stroke-width="1.5"/><text x="950.0" y="354.0" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Mapa Esri World Street Map</text><text x="950.0" y="369.0" class="t-muted" font-size="9" text-anchor="middle">imágenes del mapa (sin clave)</text><rect x="840" y="445" width="220" height="55" rx="6" class="c-mask"/><rect x="840" y="445" width="220" height="55" rx="6" class="c-external" stroke-width="1.5"/><text x="950.0" y="468.5" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Administrador</text><text x="950.0" y="483.5" class="t-muted" font-size="9" text-anchor="middle">altas, recorridos y mensajes</text><rect x="40" y="594" width="160" height="56" rx="6" class="c-mask"/><rect x="40" y="594" width="160" height="56" rx="6" class="c-external" stroke-width="1.5"/><text x="120.0" y="618.0" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Spec Kit (SDD)</text><text x="120.0" y="633.0" class="t-muted" font-size="9" text-anchor="middle">spec → plan → tasks</text><rect x="212" y="594" width="160" height="56" rx="6" class="c-mask"/><rect x="212" y="594" width="160" height="56" rx="6" class="c-external" stroke-width="1.5"/><text x="292.0" y="618.0" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Claude</text><text x="292.0" y="633.0" class="t-muted" font-size="9" text-anchor="middle">IA: spec, código, pruebas</text><rect x="384" y="594" width="160" height="56" rx="6" class="c-mask"/><rect x="384" y="594" width="160" height="56" rx="6" class="c-external" stroke-width="1.5"/><text x="464.0" y="618.0" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">GitHub</text><text x="464.0" y="633.0" class="t-muted" font-size="9" text-anchor="middle">versiones 2.5 → 2.9</text><rect x="556" y="594" width="160" height="56" rx="6" class="c-mask"/><rect x="556" y="594" width="160" height="56" rx="6" class="c-external" stroke-width="1.5"/><text x="636.0" y="618.0" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Jira</text><text x="636.0" y="633.0" class="t-muted" font-size="9" text-anchor="middle">épicas e historias</text><rect x="728" y="594" width="160" height="56" rx="6" class="c-mask"/><rect x="728" y="594" width="160" height="56" rx="6" class="c-external" stroke-width="1.5"/><text x="808.0" y="618.0" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Notion</text><text x="808.0" y="633.0" class="t-muted" font-size="9" text-anchor="middle">reporte y bitácora</text><rect x="900" y="594" width="160" height="56" rx="6" class="c-mask"/><rect x="900" y="594" width="160" height="56" rx="6" class="c-external" stroke-width="1.5"/><text x="980.0" y="618.0" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Android Studio</text><text x="980.0" y="633.0" class="t-muted" font-size="9" text-anchor="middle">compilar y emulador</text></svg>
+</div>
+<div class="cards"><div class="card"><div class="card-header"><div class="card-dot emerald"></div><h3>Flujo principal</h3></div><ul><li>&bull; El ESP32 lee el GPS y manda la ubicación a la API cada 10 s.</li><li>&bull; La API valida, pone la hora UTC y la guarda.</li><li>&bull; La app pide la última ubicación cada 10 s y la dibuja en el mapa.</li></ul></div><div class="card"><div class="card-header"><div class="card-dot rose"></div><h3>Seguridad</h3></div><ul><li>&bull; Contraseñas con scrypt (nunca en texto plano).</li><li>&bull; Token Bearer de 7 días; cada ruta revisa el rol.</li><li>&bull; Secretos en .env, secrets.h y local.properties, fuera de git.</li></ul></div><div class="card"><div class="card-header"><div class="card-dot amber"></div><h3>Pendiente</h3></div><ul><li>&bull; GPS real con SIM800L (tareas T013 y T015).</li><li>&bull; Subir la API a Hostinger VPS KVM 1 ($131.41 MXN al mes).</li><li>&bull; Colores de la ruta recorrida y ETA: fuera de alcance por ahora.</li></ul></div></div>
+<footer>Equipo G2VSIS07 · ITSH · Gestión de Proyectos de Software · versión 2.9 · noviembre 2026</footer>
+</div>
+<script>
+(function () {
+  var raiz = document.documentElement, boton = document.getElementById('tema');
+  function poner(t) { raiz.setAttribute('data-theme', t); boton.textContent = t === 'dark' ? '☀︎ Claro' : '☾ Oscuro'; try { localStorage.setItem('tema-tor', t); } catch (e) {} }
+  var guardado = null; try { guardado = localStorage.getItem('tema-tor'); } catch (e) {}
+  poner(guardado || (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+  boton.onclick = function () { poner(raiz.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); };
+
+  var lista = document.getElementById('lista');
+  document.getElementById('exportar').onclick = function (e) { e.stopPropagation(); lista.classList.toggle('abierto'); };
+  document.addEventListener('click', function () { lista.classList.remove('abierto'); });
+
+  var PROPS = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'font-family', 'font-size', 'font-weight', 'text-anchor'];
+  function svgConEstilos() {
+    var orig = document.querySelector('.diagrama svg'), copia = orig.cloneNode(true);
+    var a = orig.querySelectorAll('*'), b = copia.querySelectorAll('*');
+    for (var i = 0; i < a.length; i++) {
+      var cs = getComputedStyle(a[i]), s = '';
+      PROPS.forEach(function (p) { var v = cs.getPropertyValue(p); if (v) s += p + ':' + v + ';'; });
+      b[i].setAttribute('style', s); b[i].removeAttribute('class');
+    }
+    var vb = orig.viewBox.baseVal;
+    copia.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    copia.setAttribute('width', vb.width); copia.setAttribute('height', vb.height);
+    copia.setAttribute('style', 'background:' + getComputedStyle(document.body).backgroundColor);
+    return { texto: new XMLSerializer().serializeToString(copia), w: vb.width, h: vb.height };
+  }
+  function descargar(blob, nombre) { var u = URL.createObjectURL(blob), l = document.createElement('a'); l.href = u; l.download = nombre; l.click(); setTimeout(function () { URL.revokeObjectURL(u); }, 1000); }
+  function rasterizar(tipo, listo) {
+    var s = svgConEstilos(), img = new Image(), esc = 4;
+    img.onload = function () {
+      var c = document.createElement('canvas'); c.width = s.w * esc; c.height = s.h * esc;
+      var g = c.getContext('2d'); g.fillStyle = getComputedStyle(document.body).backgroundColor; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height); c.toBlob(listo, tipo, 0.95);
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s.texto);
+  }
+  var NOMBRE = 'arquitectura';
+  lista.addEventListener('click', function (e) {
+    var f = e.target.getAttribute('data-f'); if (!f) return;
+    if (f === 'svg') { descargar(new Blob([svgConEstilos().texto], { type: 'image/svg+xml' }), NOMBRE + '.svg'); return; }
+    if (f === 'copiar') { rasterizar('image/png', function (b) { navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]).catch(function () { descargar(b, NOMBRE + '.png'); }); }); return; }
+    rasterizar('image/' + f, function (b) { descargar(b, NOMBRE + '.' + (f === 'jpeg' ? 'jpg' : f)); });
+  });
+})();
+</script>
+</body>
+</html>

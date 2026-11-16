@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Truck on Rute 2.5: Android bloquea las conexiones HTTP sin cifrar.
+  La API usa HTTP (el SIM800L tiene problemas con HTTPS), así que aquí
+  se permite HTTP SOLO para las direcciones de la API. Todo lo demás sigue cifrado.
+
+  Si cambias API_URL en local.properties, agrega aquí esa dirección (sin http:// ni puerto):
+  - la IP de tu computadora si usas un celular en el mismo WiFi (ejemplo: 192.168.1.70)
+  - el dominio público de la API para la red celular (ejemplo: algo.ngrok-free.app)
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- El emulador de Android Studio ve a tu computadora como 10.0.2.2 -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- Agrega aquí tu IP o dominio, por ejemplo: -->
+        <!-- <domain includeSubdomains="false">192.168.1.70</domain> -->
+    </domain-config>
+</network-security-config>

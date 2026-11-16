@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truck on Route · Panel del administrador</title>
+<link rel="stylesheet" href="leaflet/leaflet.css">
+<script src="leaflet/leaflet.js"></script>
+<style>
+  :root { --verde: #019B43; --verde-osc: #0A7D2C; --fondo: #F3EFE8; --texto: #1f2a24; --gris: #6b7280; --rojo: #B91C1C; --azul: #1D4ED8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, "Segoe UI", Arial, sans-serif; background: var(--fondo); color: var(--texto); }
+  header { background: linear-gradient(90deg, var(--verde), var(--verde-osc)); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 16px; border-radius: 0 0 20px 20px; }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: 1px; }
+  header small { opacity: .85; }
+  #estado { margin-left: auto; padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,.18); font-weight: 600; }
+  main { padding: 18px 24px; grid-template-columns: 2fr 1fr; gap: 18px; }
+  .tarjetas { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .tarjeta, .caja { background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .tarjeta span { display: block; color: var(--gris); font-size: 13px; }
+  .tarjeta b { font-size: 24px; color: var(--verde-osc); }
+  #mapa { height: 480px; border-radius: 16px; }
+  h2 { margin: 0 0 10px; font-size: 17px; color: var(--verde-osc); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #eee; }
+  th { color: var(--gris); font-weight: 600; }
+  .chip { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .gps { background: #E5F4E4; color: var(--verde-osc); } .simulacion { background: #E7F1FB; color: var(--azul); }
+  input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 12px; font-size: 14px; }
+  #colonias { list-style: none; padding: 0; margin: 8px 0 0; max-height: 170px; overflow: auto; font-size: 14px; }
+  #colonias li { padding: 5px 2px; border-bottom: 1px solid #f0f0f0; }
+  .lateral { display: flex; flex-direction: column; gap: 18px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } .tarjetas { grid-template-columns: repeat(2, 1fr); } }
+
+  nav { display: flex; gap: 6px; padding: 12px 24px 0; flex-wrap: wrap; }
+  nav button { border: 0; background: #fff; color: var(--verde-osc); padding: 9px 16px; border-radius: 999px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  nav button.activa { background: var(--verde); color: #fff; }
+  .vista { display: none; } .vista.activa { display: grid; }
+  .admin { padding: 18px 24px; grid-template-columns: 1fr 2fr; gap: 18px; align-items: start; }
+  .admin form { display: flex; flex-direction: column; gap: 10px; }
+  .admin label { font-size: 13px; color: var(--gris); }
+  select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 12px; font-size: 14px; font-family: inherit; background: #fff; }
+  .btn { border: 0; background: var(--verde); color: #fff; padding: 11px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 14px; }
+  .btn:hover { background: var(--verde-osc); }
+  .btn-sec { background: #fff; color: var(--rojo); border: 1px solid #f1c4c4; padding: 4px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+  .msg { font-size: 13px; min-height: 18px; } .msg.error { color: var(--rojo); } .msg.ok { color: var(--verde-osc); }
+  .estado-programado { background: #FEF3C7; color: #B45309; } .estado-en_curso { background: #E5F4E4; color: var(--verde-osc); } .estado-terminado { background: #E5E7EB; color: #374151; }
+  .rol-administrador { background: #EDE9FE; color: #6D28D9; } .rol-conductor { background: #E7F1FB; color: var(--azul); } .rol-ciudadano { background: #E5F4E4; color: var(--verde-osc); }
+  .elegidas { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+  .elegidas span { background: #E5F4E4; color: var(--verde-osc); padding: 4px 10px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+  .opciones { max-height: 150px; overflow: auto; border: 1px solid #eee; border-radius: 12px; }
+  .opciones div { padding: 6px 10px; cursor: pointer; font-size: 14px; } .opciones div:hover { background: #F3F4F6; }
+  #login { position: fixed; inset: 0; background: var(--fondo); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+  #login .caja { width: 360px; max-width: 92vw; padding: 28px; display: flex; flex-direction: column; gap: 12px; }
+  #login h2 { font-size: 22px; text-align: center; }
+  #usuario { font-size: 13px; opacity: .9; }
+  #salir { background: rgba(255,255,255,.18); color: #fff; border: 0; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 600; }
+  @media (max-width: 900px) { .admin { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <img src="camion.png" alt="" width="46">
+  <div><h1>TRUCK ON ROUTE</h1><small>Panel del administrador · Huauchinango, Puebla</small></div>
+  <div id="estado">Conectando…</div>
+  <div id="usuario"></div>
+  <button id="salir" type="button">Salir</button>
+</header>
+<!-- Versión 2.8 (spec 004): inicio de sesión del administrador -->
+<div id="login">
+  <form class="caja" id="f-login">
+    <img src="camion.png" alt="" width="90" style="align-self:center">
+    <h2>Panel del administrador</h2>
+    <input id="l-correo" type="email" placeholder="Correo" autocomplete="username" required>
+    <input id="l-contrasena" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+    <button class="btn" type="submit">Entrar</button>
+    <div class="msg error" id="l-msg"></div>
+  </form>
+</div>
+<nav>
+  <button data-vista="monitoreo" class="activa">Monitoreo</button>
+  <button data-vista="recorridos">Recorridos</button>
+  <button data-vista="camiones">Camiones</button>
+  <button data-vista="choferes">Choferes</button>
+  <button data-vista="rutas">Rutas</button>
+  <button data-vista="mensajes">Mensajes al chofer</button>
+  <button data-vista="usuarios">Usuarios</button>
+</nav>
+<main id="v-monitoreo" class="vista activa">
+  <section class="tarjetas">
+    <div class="tarjeta"><span>Camión</span><b id="t-camion">—</b></div>
+    <div class="tarjeta"><span>Última actualización</span><b id="t-hora">—</b></div>
+    <div class="tarjeta"><span>Velocidad</span><b id="t-vel">—</b></div>
+    <div class="tarjeta"><span>Distancia recorrida</span><b id="t-dist">—</b></div>
+    <div class="tarjeta"><span>Puntos recibidos · datos en</span><b id="t-puntos">—</b></div>
+  </section>
+  <section class="caja"><h2>¿Dónde está el camión?</h2><div id="mapa"></div></section>
+  <aside class="lateral">
+    <div class="caja">
+      <h2>Últimos puntos</h2>
+      <table><thead><tr><th>Hora</th><th>Lat, Lng</th><th>Fuente</th></tr></thead><tbody id="tabla"></tbody></table>
+    </div>
+    <div class="caja">
+      <h2>Colonias</h2>
+      <input id="buscar" placeholder="Buscar colonia… (ej. zaca)">
+      <ul id="colonias"></ul>
+    </div>
+  </aside>
+</main>
+
+<!-- Recorridos: camión + chofer + ruta + indicaciones -->
+<section id="v-recorridos" class="vista admin">
+  <form class="caja" id="f-recorrido">
+    <h2>Asignar recorrido</h2>
+    <label>Camión<select id="r-camion" required></select></label>
+    <label>Chofer<select id="r-chofer" required></select></label>
+    <label>Ruta<select id="r-ruta" required></select></label>
+    <label>Fecha y hora<input id="r-fecha" type="datetime-local"></label>
+    <label>Indicaciones para el chofer<textarea id="r-indicaciones" rows="3" placeholder="Ej. Empieza por el mercado; la calle 5 de Mayo está cerrada"></textarea></label>
+    <button class="btn">Asignar</button>
+    <div class="msg" id="r-msg"></div>
+  </form>
+  <div class="caja"><h2>Recorridos</h2>
+    <table><thead><tr><th>Fecha</th><th>Camión</th><th>Chofer</th><th>Ruta</th><th>Estado</th></tr></thead><tbody id="t-recorridos"></tbody></table>
+  </div>
+</section>
+
+<section id="v-camiones" class="vista admin">
+  <form class="caja" id="f-camion">
+    <h2>Dar de alta un camión</h2>
+    <label>Clave (la que usa el GPS)<input id="c-clave" placeholder="CAMION-02" maxlength="20" required></label>
+    <label>Placas<input id="c-placas" placeholder="PUE-456-B"></label>
+    <label>Modelo<input id="c-modelo" placeholder="Recolector 2020"></label>
+    <button class="btn">Guardar camión</button>
+    <div class="msg" id="c-msg"></div>
+  </form>
+  <div class="caja"><h2>Camiones</h2>
+    <table><thead><tr><th>Clave</th><th>Placas</th><th>Modelo</th><th></th></tr></thead><tbody id="t-camiones"></tbody></table>
+  </div>
+</section>
+
+<section id="v-choferes" class="vista admin">
+  <form class="caja" id="f-chofer">
+    <h2>Dar de alta un chofer</h2>
+    <label>Nombre<input id="ch-nombre" required></label>
+    <label>Correo (con este entra a la app)<input id="ch-correo" type="email" required></label>
+    <label>Teléfono<input id="ch-telefono"></label>
+    <label>Contraseña inicial (mínimo 6)<input id="ch-contrasena" minlength="6" required></label>
+    <button class="btn">Guardar chofer</button>
+    <div class="msg" id="ch-msg"></div>
+  </form>
+  <div class="caja"><h2>Choferes</h2>
+    <table><thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th></tr></thead><tbody id="t-choferes"></tbody></table>
+  </div>
+</section>
+
+<section id="v-rutas" class="vista admin">
+  <form class="caja" id="f-ruta">
+    <h2>Crear una ruta</h2>
+    <label>Nombre<input id="ru-nombre" placeholder="Ruta Norte" required></label>
+    <label>Horario<input id="ru-horario" placeholder="Martes y jueves 7:00 a 11:00"></label>
+    <label>Colonias en orden (toca para agregar o quitar)</label>
+    <div class="elegidas" id="ru-elegidas"></div>
+    <input id="ru-buscar" placeholder="Buscar colonia…">
+    <div class="opciones" id="ru-opciones"></div>
+    <button class="btn">Guardar ruta</button>
+    <div class="msg" id="ru-msg"></div>
+  </form>
+  <div class="caja"><h2>Rutas</h2>
+    <table><thead><tr><th>Ruta</th><th>Colonias</th><th>Horario</th></tr></thead><tbody id="t-rutas"></tbody></table>
+  </div>
+</section>
+
+<section id="v-mensajes" class="vista admin">
+  <form class="caja" id="f-mensaje">
+    <h2>Mensaje al chofer</h2>
+    <label>Chofer<select id="m-chofer" required></select></label>
+    <label>Mensaje<textarea id="m-texto" rows="4" placeholder="Hoy no pases por la calle 5 de Mayo, está cerrada" required></textarea></label>
+    <button class="btn">Enviar</button>
+    <div class="msg" id="m-msg"></div>
+  </form>
+  <div class="caja"><h2>Mensajes enviados</h2>
+    <table><thead><tr><th>Hora</th><th>Para</th><th>Mensaje</th></tr></thead><tbody id="t-mensajes"></tbody></table>
+  </div>
+</section>
+
+<section id="v-usuarios" class="vista admin">
+  <div class="caja" id="resumen"><h2>Resumen</h2><div id="res-texto">—</div></div>
+  <div class="caja"><h2>Usuarios registrados</h2>
+    <table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Colonia</th><th></th></tr></thead><tbody id="t-usuarios"></tbody></table>
+  </div>
+</section>
+<script>
+  const API = location.origin;
+  const mapa = L.map('mapa').setView([20.1767, -98.0527], 15);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19, attribution: 'Esri, HERE, Garmin, © OpenStreetMap contributors'
+  }).addTo(mapa);
+  const icono = L.icon({ iconUrl: 'camion.png', iconSize: [56, 56], iconAnchor: [28, 40] });
+  const marcador = L.marker([20.1767, -98.0527], { icon: icono }).addTo(mapa);
+  const recorrido = L.polyline([], { color: '#019B43', weight: 5, opacity: .75 }).addTo(mapa);
+  let centrado = false;
+
+  const hora = (iso) => new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  async function actualizar() {
+    try {
+      const [est, hist] = await Promise.all([
+        fetch(`${API}/estadisticas`).then((r) => r.json()),
+        fetch(`${API}/ubicacion/historial?limite=100`).then((r) => r.json()),
+      ]);
+      const estado = document.getElementById('estado');
+      if (!hist.length) {
+        estado.textContent = 'Sin ubicación disponible';
+        return;
+      }
+      const u = hist.at(-1);
+      estado.textContent = est.enLinea ? (u.fuente === 'gps' ? '● Ubicación real' : '● Simulación') : '● Sin señal reciente';
+      document.getElementById('t-camion').textContent = u.camion;
+      document.getElementById('t-hora').textContent = hora(u.fecha);
+      document.getElementById('t-vel').textContent = est.velocidadKmh === null ? '—' : `${est.velocidadKmh} km/h`;
+      document.getElementById('t-dist').textContent = `${est.distanciaKm} km`;
+      document.getElementById('t-puntos').textContent = `${est.puntosRecibidos} · ${est.baseDeDatos}`;
+
+      marcador.setLatLng([u.lat, u.lng]);
+      recorrido.setLatLngs(hist.map((p) => [p.lat, p.lng]));
+      if (!centrado) { mapa.setView([u.lat, u.lng], 16); centrado = true; }
+
+      document.getElementById('tabla').innerHTML = hist.slice(-8).reverse().map((p) =>
+        `<tr><td>${hora(p.fecha)}</td><td>${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</td><td><span class="chip ${p.fuente}">${p.fuente}</span></td></tr>`).join('');
+    } catch {
+      document.getElementById('estado').textContent = 'API apagada';
+    }
+  }
+
+  async function buscar() {
+    const texto = document.getElementById('buscar').value;
+    const lista = await fetch(`${API}/colonias?buscar=${encodeURIComponent(texto)}`).then((r) => r.json());
+    document.getElementById('colonias').innerHTML = lista.slice(0, 30).map((c) => `<li>${c}</li>`).join('') || '<li>Sin resultados</li>';
+  }
+
+  document.getElementById('buscar').addEventListener('input', buscar);
+  buscar();
+  actualizar();
+  setInterval(actualizar, 5000);
+
+  // ===================== Versión 2.8 (spec 004): administración =====================
+  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const $ = (id) => document.getElementById(id);
+  let token = sessionStorage.getItem('tor-token');
+  const ESTADOS = { programado: 'Programado', en_curso: 'En ruta', terminado: 'Terminado' };
+  const ROLES = { administrador: 'Administrador', conductor: 'Chofer', ciudadano: 'Ciudadano' };
+
+  // Llama a la API con el token; si la sesión venció, vuelve a pedir el login
+  async function api(metodo, ruta, cuerpo) {
+    const r = await fetch(API + ruta, {
+      method: metodo,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (r.status === 401) { salir(); throw new Error(datos.error || 'Inicia sesión otra vez'); }
+    if (!r.ok) throw new Error(datos.error || 'Error ' + r.status);
+    return datos;
+  }
+  function aviso(id, texto, ok) { const m = $(id); m.textContent = texto; m.className = 'msg ' + (ok ? 'ok' : 'error'); }
+
+  $('f-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const r = await fetch(API + '/sesion', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo: $('l-correo').value, contrasena: $('l-contrasena').value }) });
+      const d = await r.json();
+      if (!r.ok) return aviso('l-msg', d.error, false);
+      if (d.usuario.rol !== 'administrador') return aviso('l-msg', 'Esta cuenta no es de administrador. Los choferes y ciudadanos usan la app.', false);
+      token = d.token; sessionStorage.setItem('tor-token', token);
+      mostrarSesion(d.usuario);
+    } catch { aviso('l-msg', 'No se pudo conectar con la API', false); }
+  });
+
+  function mostrarSesion(u) {
+    $('login').style.display = 'none';
+    $('usuario').textContent = u.nombre;
+    cargarTodo();
+  }
+  function salir() {
+    if (token) fetch(API + '/sesion', { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }).catch(() => {});
+    token = null; sessionStorage.removeItem('tor-token');
+    $('login').style.display = 'flex';
+  }
+  $('salir').addEventListener('click', salir);
+
+  // Pestañas
+  document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('activa', x === b));
+    document.querySelectorAll('.vista').forEach((v) => v.classList.toggle('activa', v.id === 'v-' + b.dataset.vista));
+    if (b.dataset.vista === 'monitoreo') setTimeout(() => mapa.invalidateSize(), 50);
+    else cargarTodo();
+  }));
+
+  const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  const opciones = (lista, texto) => lista.map((x) => `<option value="${x.id}">${esc(texto(x))}</option>`).join('');
+
+  async function cargarTodo() {
+    if (!token) return;
+    try {
+      const [camiones, choferes, rutas, recorridos, mensajes, usuarios, resumen] = await Promise.all([
+        api('GET', '/admin/camiones'), api('GET', '/admin/choferes'), api('GET', '/admin/rutas'),
+        api('GET', '/admin/recorridos'), api('GET', '/admin/mensajes'), api('GET', '/admin/usuarios'), api('GET', '/admin/resumen'),
+      ]);
+      $('t-camiones').innerHTML = camiones.map((c) => `<tr><td><b>${esc(c.clave)}</b></td><td>${esc(c.placas)}</td><td>${esc(c.modelo)}</td><td><button class="btn-sec" data-borrar-camion="${c.id}">Quitar</button></td></tr>`).join('') || '<tr><td colspan="4">Sin camiones</td></tr>';
+      $('t-choferes').innerHTML = choferes.map((c) => `<tr><td>${esc(c.nombre)}</td><td>${esc(c.correo)}</td><td>${esc(c.telefono)}</td></tr>`).join('') || '<tr><td colspan="3">Sin choferes</td></tr>';
+      $('t-rutas').innerHTML = rutas.map((r) => `<tr><td><b>${esc(r.nombre)}</b></td><td>${esc(r.colonias.join(' → '))}</td><td>${esc(r.horario)}</td></tr>`).join('') || '<tr><td colspan="3">Sin rutas</td></tr>';
+      $('t-recorridos').innerHTML = recorridos.map((r) => `<tr><td>${fechaHora(r.fecha)}</td><td>${esc(r.camion)}</td><td>${esc(r.chofer)}</td><td>${esc(r.ruta)}</td><td><span class="chip estado-${r.estado}">${ESTADOS[r.estado]}</span></td></tr>`).join('') || '<tr><td colspan="5">Sin recorridos</td></tr>';
+      $('t-mensajes').innerHTML = mensajes.map((m) => `<tr><td>${fechaHora(m.fecha)}</td><td>${esc(m.para)}</td><td>${esc(m.texto)}</td></tr>`).join('') || '<tr><td colspan="3">Sin mensajes</td></tr>';
+      $('t-usuarios').innerHTML = usuarios.map((u) => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.correo)}</td><td><span class="chip rol-${u.rol}">${ROLES[u.rol]}</span></td><td>${esc(u.colonia)}</td><td>${u.rol === 'administrador' ? '' : `<button class="btn-sec" data-borrar-usuario="${u.id}">Borrar</button>`}</td></tr>`).join('');
+      $('res-texto').innerHTML = `<p><b>${resumen.camiones}</b> camiones · <b>${resumen.choferes}</b> choferes · <b>${resumen.ciudadanos}</b> ciudadanos</p><p><b>${resumen.recorridosHoy}</b> recorridos hoy · <b>${resumen.enRuta}</b> en ruta ahora</p>`;
+      $('r-camion').innerHTML = opciones(camiones, (c) => c.clave + (c.placas ? ' · ' + c.placas : ''));
+      $('r-chofer').innerHTML = opciones(choferes, (c) => c.nombre);
+      $('m-chofer').innerHTML = opciones(choferes, (c) => c.nombre);
+      $('r-ruta').innerHTML = opciones(rutas, (r) => r.nombre);
+    } catch (err) { console.warn(err.message); }
+  }
+
+  // Borrar camión o usuario
+  document.addEventListener('click', async (e) => {
+    const c = e.target.dataset.borrarCamion, u = e.target.dataset.borrarUsuario;
+    if (!c && !u) return;
+    if (!confirm('¿Seguro que quieres quitarlo?')) return;
+    try { await api('DELETE', c ? '/admin/camiones/' + c : '/admin/usuarios/' + u); cargarTodo(); } catch (err) { alert(err.message); }
+  });
+
+  // Formularios: envían, avisan y recargan las tablas
+  function formulario(id, msg, ruta, cuerpo, okTexto) {
+    $(id).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try { await api('POST', ruta, cuerpo()); aviso(msg, okTexto, true); $(id).reset(); limpiarRuta(id); cargarTodo(); }
+      catch (err) { aviso(msg, err.message, false); }
+    });
+  }
+  formulario('f-camion', 'c-msg', '/admin/camiones', () => ({ clave: $('c-clave').value, placas: $('c-placas').value, modelo: $('c-modelo').value }), 'Camión guardado');
+  formulario('f-chofer', 'ch-msg', '/admin/choferes', () => ({ nombre: $('ch-nombre').value, correo: $('ch-correo').value, telefono: $('ch-telefono').value, contrasena: $('ch-contrasena').value }), 'Chofer guardado. Ya puede entrar a la app con su correo.');
+  formulario('f-recorrido', 'r-msg', '/admin/recorridos', () => ({ camionId: $('r-camion').value, choferId: $('r-chofer').value, rutaId: $('r-ruta').value, fecha: $('r-fecha').value || undefined, indicaciones: $('r-indicaciones').value }), 'Recorrido asignado. El chofer lo verá en su app.');
+  formulario('f-mensaje', 'm-msg', '/admin/mensajes', () => ({ choferId: $('m-chofer').value, texto: $('m-texto').value }), 'Mensaje enviado');
+  formulario('f-ruta', 'ru-msg', '/admin/rutas', () => ({ nombre: $('ru-nombre').value, horario: $('ru-horario').value, colonias: elegidas }), 'Ruta guardada');
+
+  // Colonias de la ruta, en el orden en que se tocan
+  let elegidas = [];
+  function pintarColonias() {
+    $('ru-elegidas').innerHTML = elegidas.map((c, i) => `<span data-quitar="${i}">${i + 1}. ${esc(c)} ✕</span>`).join('') || '<small style="color:#6b7280">Ninguna todavía</small>';
+  }
+  function limpiarRuta(id) { if (id === 'f-ruta') { elegidas = []; pintarColonias(); } }
+  async function opcionesColonias() {
+    const lista = await fetch(`${API}/colonias?buscar=${encodeURIComponent($('ru-buscar').value)}`).then((r) => r.json());
+    $('ru-opciones').innerHTML = lista.filter((c) => !elegidas.includes(c)).map((c) => `<div data-agregar="${esc(c)}">${esc(c)}</div>`).join('');
+  }
+  $('ru-opciones').addEventListener('click', (e) => { const c = e.target.dataset.agregar; if (c) { elegidas.push(c); pintarColonias(); opcionesColonias(); } });
+  $('ru-elegidas').addEventListener('click', (e) => { const i = e.target.dataset.quitar; if (i !== undefined) { elegidas.splice(Number(i), 1); pintarColonias(); opcionesColonias(); } });
+  $('ru-buscar').addEventListener('input', opcionesColonias);
+  pintarColonias(); opcionesColonias();
+
+  // Si ya había sesión en esta pestaña, se revisa que siga válida
+  if (token) fetch(API + '/sesion', { headers: { Authorization: 'Bearer ' + token } })
+    .then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => mostrarSesion(d.usuario)).catch(salir);
+  setInterval(() => { if (token && !document.querySelector('#v-monitoreo.activa')) cargarTodo(); }, 15000);
+</script>
+</body>
+</html>

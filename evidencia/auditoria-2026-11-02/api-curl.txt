@@ -1,0 +1,71 @@
+# Evidencia de la auditoría de calidad · 2026-11-02 18:35 UTC
+# API de TruckOnRute 2.6 en memoria (sin .env), corrida en el puerto 3100 para no chocar con otra instancia. Node 22.
+
+## Paso 1
+$ curl -s -w ' [HTTP %{http_code}]' http://localhost:3100/ubicacion
+{"error":"Todavía no hay ubicación"} [HTTP 404]
+
+## Paso 2
+$ curl -s -w ' [HTTP %{http_code}]' -X POST http://localhost:3100/ubicacion -H 'Content-Type: application/json' -d '{"camion":"CAMION-01","lng":-98.051,"fuente":"gps"}'
+{"error":"Falta el campo lat"} [HTTP 400]
+
+## Paso 3
+$ curl -s -w ' [HTTP %{http_code}]' -X POST http://localhost:3100/ubicacion -H 'Content-Type: application/json' -d '{"camion":"CAMION-01","lat":200,"lng":-98.051,"fuente":"gps"}'
+{"error":"lat debe ser un número entre -90 y 90"} [HTTP 400]
+
+## Paso 4
+$ curl -s -w ' [HTTP %{http_code}]' -X POST http://localhost:3100/ubicacion -H 'Content-Type: application/json' -d '{"camion":"CAMION-01","lat":"20.17","lng":-98.051,"fuente":"gps"}'
+{"error":"lat debe ser un número entre -90 y 90"} [HTTP 400]
+
+## Paso 5
+$ curl -s -w ' [HTTP %{http_code}]' -X POST http://localhost:3100/ubicacion -H 'Content-Type: application/json' -d '{"camion":"CAMION-01","lat":20.175,"lng":-98.051,"fuente":"satelite"}'
+{"error":"fuente debe ser gps o simulacion"} [HTTP 400]
+
+## Paso 6
+$ curl -s -w ' [HTTP %{http_code}]' -X POST http://localhost:3100/ubicacion -H 'Content-Type: application/json' -d 'esto no es json'
+{"error":"El cuerpo debe ser JSON"} [HTTP 400]
+
+## Paso 7
+$ curl -s -w ' [HTTP %{http_code}]' http://localhost:3100/ubicacion
+{"error":"Todavía no hay ubicación"} [HTTP 404]
+
+## Paso 8
+$ curl -s -w ' [HTTP %{http_code}]' -X POST http://localhost:3100/ubicacion -H 'Content-Type: application/json' -d '{"camion":"CAMION-01","lat":20.175,"lng":-98.051,"fuente":"gps","fecha":"1999-01-01T00:00:00Z"}'
+{"camion":"CAMION-01","lat":20.175,"lng":-98.051,"fuente":"gps","fecha":"2026-11-02T18:35:11.778Z"} [HTTP 200]
+
+## Paso 9
+$ curl -s -w ' [HTTP %{http_code}]' http://localhost:3100/ubicacion
+{"camion":"CAMION-01","lat":20.175,"lng":-98.051,"fuente":"gps","fecha":"2026-11-02T18:35:11.778Z"} [HTTP 200]
+
+## Paso 10
+$ npm run simular (3 s, INTERVALO_MS=400)
+Simulando el camión hacia http://localhost:3100 cada 0.4 s. Ctrl+C para detener.
+Enviado punto 1/30 (20.175, -98.051) → 200
+Enviado punto 2/30 (20.175267, -98.050733) → 200
+Enviado punto 3/30 (20.175533, -98.050467) → 200
+Enviado punto 4/30 (20.1758, -98.0502) → 200
+Enviado punto 5/30 (20.176033, -98.049933) → 200
+Enviado punto 6/30 (20.176267, -98.049667) → 200
+Enviado punto 7/30 (20.1765, -98.0494) → 200
+Enviado punto 8/30 (20.176767, -98.0491) → 200
+
+## Paso 11
+$ curl -s -w ' [HTTP %{http_code}]' http://localhost:3100/ubicacion
+{"camion":"CAMION-01","lat":20.176767,"lng":-98.0491,"fuente":"simulacion","fecha":"2026-11-02T18:35:14.712Z"} [HTTP 200]
+
+## Paso 12
+$ curl -s -w ' [HTTP %{http_code}]' 'http://localhost:3100/ubicacion/historial?limite=3'
+[{"camion":"CAMION-01","lat":20.176267,"lng":-98.049667,"fuente":"simulacion","fecha":"2026-11-02T18:35:13.911Z"},{"camion":"CAMION-01","lat":20.1765,"lng":-98.0494,"fuente":"simulacion","fecha":"2026-11-02T18:35:14.312Z"},{"camion":"CAMION-01","lat":20.176767,"lng":-98.0491,"fuente":"simulacion","fecha":"2026-11-02T18:35:14.712Z"}] [HTTP 200]
+
+## Paso 13
+$ curl -s -w ' [HTTP %{http_code}]' http://localhost:3100/estadisticas
+{"camion":"CAMION-01","puntosRecibidos":9,"distanciaKm":0.279,"velocidadKmh":388.3,"ultimaFecha":"2026-11-02T18:35:14.712Z","enLinea":true,"camiones":1,"baseDeDatos":"memoria","guardadasEnBD":null,"encendidaDesde":"2026-11-02T18:35:11.051Z"} [HTTP 200]
+
+## Paso 14
+$ curl -s -o /dev/null -w '[HTTP %{http_code}] %{content_type}' http://localhost:3100/panel
+[HTTP 301] text/html; charset=UTF-8
+
+## Paso 15
+$ curl -s -w ' [HTTP %{http_code}]' http://localhost:3100/no-existe
+{"error":"Ruta no encontrada"} [HTTP 404]
+

@@ -1,0 +1,22 @@
+# Dependencias de Node
+node_modules/
+
+# Secretos: nunca se suben a git (regla 8)
+.env
+secrets.h
+local.properties
+
+# Archivos de compilación de Android
+build/
+.gradle/
+.idea/
+.kotlin/
+*.iml
+
+# Varios
+*.log
+.DS_Store
+Thumbs.db
+
+# Datos de usuarios, camiones y recorridos (spec 004): tienen correos y hashes, no se suben
+api/datos/

@@ -1,0 +1,22 @@
+ok 1 - GET /ubicacion da 404 antes de recibir datos
+ok 2 - POST /ubicacion guarda y agrega la fecha
+ok 3 - POST /ubicacion rechaza una latitud fuera de rango
+ok 4 - el historial guarda los puntos en orden
+ok 5 - las estadísticas calculan la distancia recorrida
+ok 6 - GET /camiones lista el camión en línea
+ok 7 - GET /colonias busca sin importar acentos
+ok 8 - el panel web se sirve en /panel
+ok 9 - acepta una ubicación válida
+ok 10 - acepta fuente "simulacion"
+ok 11 - ignora campos extra, incluida una fecha enviada por el ESP32
+ok 12 - rechaza si falta lat
+ok 13 - rechaza lat fuera de rango (200)
+ok 14 - rechaza lat como texto
+ok 15 - rechaza lng fuera de rango
+ok 16 - rechaza una fuente inválida
+ok 17 - rechaza camion vacío
+ok 18 - rechaza camion de más de 20 caracteres
+ok 19 - rechaza un cuerpo que no es objeto
+# tests 19
+# pass 19
+# fail 0
