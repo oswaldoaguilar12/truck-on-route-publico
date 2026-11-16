@@ -11,6 +11,8 @@ const {
 const VERDE = '0A7D2C', VERDE_CLARO = 'E3F4E8', GRIS = 'F2F2F2';
 const REPO = 'https://github.com/oswaldoaguilar12/truck-on-route-publico'; // repo público (copia limpia de version-2.9)
 const ARBOL = REPO + '/tree/main/';
+const BLOB = REPO + '/blob/main/';
+const JIRA = 'https://truckonroute-g2vsis07.atlassian.net/jira/software/projects/SCRUM/boards/1';
 const ANCHO = 9360;         // carta vertical con márgenes de 1"
 const ANCHO_H = 12960;      // carta horizontal con márgenes de 1"
 
@@ -165,29 +167,29 @@ const planeacion = [
   ], { cebra: true, centrar: [0] }),
 
   h2('2.5 Product Backlog: épicas e historias de usuario'),
-  p('Estas son las épicas e historias que se capturan en Jira, una por historia de las specs:'),
-  tabla([2200, 5560, 800, 800], ['Épica', 'Historia de usuario', 'Prioridad', 'Entrega'], [
-    ['E1 Ubicación en tiempo real', 'US1 El dispositivo reporta su ubicación real', 'P1', '1'],
-    ['E1 Ubicación en tiempo real', 'US2 El ciudadano ve el camión en el mapa de la app', 'P1', '1'],
-    ['E1 Ubicación en tiempo real', 'US3 El envío funciona por red celular (SIM800L)', 'P2', '6'],
-    ['E1 Ubicación en tiempo real', 'US4 Distinguir dato real de simulación', 'P3', '1'],
-    ['E2 Historial y monitoreo', 'H7 Ver por dónde ya pasó el camión', 'P1', '2'],
-    ['E2 Historial y monitoreo', 'H8 Ver velocidad y distancia', 'P2', '2'],
-    ['E2 Historial y monitoreo', 'H9 Mover el mapa sin que regrese solo', 'P3', '2'],
-    ['E2 Historial y monitoreo', 'H10 Panel web del administrador', 'P1', '2'],
-    ['E2 Historial y monitoreo', 'H11 Guardar las ubicaciones en MySQL', 'P1', '2'],
-    ['E2 Historial y monitoreo', 'H12 Consultar colonias desde la API', 'P3', '2'],
-    ['E3 Cuentas y validación', 'Login y registro rechazan correos mal escritos', 'P1', '3'],
-    ['E3 Cuentas y validación', 'H13 Iniciar sesión con mi cuenta', 'P1', '4'],
-    ['E3 Cuentas y validación', 'H14 Crear mi cuenta (ciudadano)', 'P1', '4'],
-    ['E4 Operación del servicio', 'H15 Dar de alta camiones y choferes', 'P1', '4'],
-    ['E4 Operación del servicio', 'H16 Asignar el recorrido del día', 'P1', '4'],
-    ['E4 Operación del servicio', 'H17 Mandar mensajes al chofer', 'P2', '4'],
-    ['E4 Operación del servicio', 'H18 Ver mi recorrido e iniciar la ruta (chofer)', 'P1', '4'],
-    ['E5 Avisos al ciudadano', 'H19 Saber que el camión ya salió', 'P1', '4'],
-    ['E5 Avisos al ciudadano', 'H20 Que me avisen cuando está cerca', 'P2', '4'],
-    ['E6 Experiencia de usuario', 'H21 Pantallas con profundidad y orden', 'P1', '5'],
-  ], { cebra: true, centrar: [2, 3], tam: 17 }),
+  p([t('Las 6 épicas y 20 historias están capturadas en Jira (proyecto SCRUM, épicas SCRUM-5 a SCRUM-10): '), enlace('tablero de Truck on Route', JIRA), t('. El sprint activo es "Sprint 6 · Cierre del proyecto" y el siguiente "Sprint 7 · v3.0 GPS real y despliegue".')]),
+  tabla([1800, 3810, 1150, 900, 650, 1050], ['Épica', 'Historia de usuario', 'Jira', 'Prior.', 'Ent.', 'Estado'], [
+    ['E1 Ubicación en tiempo real', 'US1 El dispositivo reporta su ubicación real', 'SCRUM-11', 'P1', '1', 'Por hacer'],
+    ['E1 Ubicación en tiempo real', 'US2 El ciudadano ve el camión en el mapa de la app', 'SCRUM-12', 'P1', '1', 'Hecha'],
+    ['E1 Ubicación en tiempo real', 'US3 El envío funciona por red celular (SIM800L)', 'SCRUM-13', 'P2', '6', 'Por hacer'],
+    ['E1 Ubicación en tiempo real', 'US4 Distinguir dato real de simulación', 'SCRUM-14', 'P3', '1', 'Hecha'],
+    ['E2 Historial y monitoreo', 'H7 Ver por dónde ya pasó el camión', 'SCRUM-15', 'P1', '2', 'Hecha'],
+    ['E2 Historial y monitoreo', 'H8 Ver velocidad y distancia', 'SCRUM-16', 'P2', '2', 'Hecha'],
+    ['E2 Historial y monitoreo', 'H9 Mover el mapa sin que regrese solo', 'SCRUM-17', 'P3', '2', 'Hecha'],
+    ['E2 Historial y monitoreo', 'H10 Panel web del administrador', 'SCRUM-18', 'P1', '2', 'Hecha'],
+    ['E2 Historial y monitoreo', 'H11 Guardar las ubicaciones en MySQL', 'SCRUM-19', 'P1', '2', 'Hecha'],
+    ['E2 Historial y monitoreo', 'H12 Consultar colonias desde la API', 'SCRUM-20', 'P3', '2', 'Hecha'],
+    ['E3 Cuentas y validación', 'Login y registro rechazan correos mal escritos', 'SCRUM-21', 'P1', '3', 'Hecha'],
+    ['E3 Cuentas y validación', 'H13 Iniciar sesión con mi cuenta', 'SCRUM-22', 'P1', '4', 'Hecha'],
+    ['E3 Cuentas y validación', 'H14 Crear mi cuenta (ciudadano)', 'SCRUM-23', 'P1', '4', 'Hecha'],
+    ['E4 Operación del servicio', 'H15 Dar de alta camiones y choferes', 'SCRUM-24', 'P1', '4', 'Hecha'],
+    ['E4 Operación del servicio', 'H16 Asignar el recorrido del día', 'SCRUM-25', 'P1', '4', 'Hecha'],
+    ['E4 Operación del servicio', 'H17 Mandar mensajes al chofer', 'SCRUM-26', 'P2', '4', 'Hecha'],
+    ['E4 Operación del servicio', 'H18 Ver mi recorrido e iniciar la ruta (chofer)', 'SCRUM-27', 'P1', '4', 'Hecha'],
+    ['E5 Avisos al ciudadano', 'H19 Saber que el camión ya salió', 'SCRUM-28', 'P1', '4', 'Hecha'],
+    ['E5 Avisos al ciudadano', 'H20 Que me avisen cuando está cerca', 'SCRUM-29', 'P2', '4', 'Hecha'],
+    ['E6 Experiencia de usuario', 'H21 Pantallas con profundidad y orden', 'SCRUM-30', 'P1', '5', 'En curso'],
+  ], { cebra: true, centrar: [2, 3, 4, 5], tam: 17 }),
   salto(),
 ];
 
@@ -335,9 +337,10 @@ const resto = [
 
   h1('Anexo: enlaces'),
   ...[
-    ['Repositorio público: ', ARBOL],
-    ['Diagrama de arquitectura: ', ARBOL + 'docs/diagramas/arquitectura.html'],
-    ['Diagrama de la base de datos: ', ARBOL + 'docs/diagramas/base-de-datos.html'],
+    ['Repositorio público: ', REPO],
+    ['Tablero de Jira: ', JIRA],
+    ['Diagrama de arquitectura (imagen): ', BLOB + 'docs/diagramas/arquitectura.png'],
+    ['Diagrama de la base de datos (imagen): ', BLOB + 'docs/diagramas/base-de-datos.png'],
     ['Constitución: ', ARBOL + '.specify/memory/constitution.md'],
     ['Especificaciones: ', ARBOL + 'specs'],
   ].map(([a, u]) => viñeta([t(a, { bold: true }), enlace(u, u)])),
