@@ -9,8 +9,8 @@ const {
 } = require('docx');
 
 const VERDE = '0A7D2C', VERDE_CLARO = 'E3F4E8', GRIS = 'F2F2F2';
-const REPO = 'https://github.com/oswaldoaguilar12/truck-on-route';
-const ARBOL = REPO + '/tree/version-2.9/';
+const REPO = 'https://github.com/oswaldoaguilar12/truck-on-route-publico'; // repo público (copia limpia de version-2.9)
+const ARBOL = REPO + '/tree/main/';
 const ANCHO = 9360;         // carta vertical con márgenes de 1"
 const ANCHO_H = 12960;      // carta horizontal con márgenes de 1"
 
@@ -86,7 +86,7 @@ const inicio = [
     [t('Funcionalidades extendidas', { bold: true, size: 18 }), 'Historial del recorrido, velocidad y distancia; panel web del administrador; guardado en MySQL; validación de correo; cuentas con rol (ciudadano, chofer y administrador); altas de camiones, choferes y rutas; recorridos con indicaciones; aviso "el camión ya está en ruta"; aviso de cercanía; estilo visual con profundidad.'],
   ]),
   p(''),
-  p([t('Evidencia: ', { bold: true }), enlace('ACTA DE CONSTITUCIÓN DEL PROYECTO.pdf', REPO + '/blob/version-2.9/ACTA%20DE%20CONSTITUCI%C3%93N%20DEL%20PROYECTO.pdf'), t(' en el repositorio.')]),
+  p([t('Evidencia: ', { bold: true }), enlace('ACTA DE CONSTITUCIÓN DEL PROYECTO.pdf', REPO + '/blob/main/ACTA%20DE%20CONSTITUCI%C3%93N%20DEL%20PROYECTO.pdf'), t(' en el repositorio.')]),
 
   h2('1.2 Registro de interesados (stakeholders)'),
   tabla([2100, 1700, 2560, 1000, 1000, 1000], ['Interesado', 'Rol', 'Interés en el proyecto', 'Interés', 'Influencia', 'Estrategia'], [
@@ -119,7 +119,7 @@ const inicio = [
 const planeacion = [
   h1('2. Planeación'),
   h2('2.1 Especificación del sistema (SDD con Spec Kit)'),
-  p('Cada versión se especificó antes de programarla. Todos los archivos están en el repositorio, rama version-2.9:'),
+  p('Cada versión se especificó antes de programarla. Todos los archivos están en el repositorio público truck-on-route-publico:'),
   tabla([2900, 3700, 2760], ['Artefacto', 'Archivo', 'Qué contiene'], [
     ['Constitución v3.0.0', '.specify/memory/constitution.md', 'Reglas, alcance por fases y lo que queda fuera.'],
     ['Instrucciones para la IA', 'CLAUDE.md', 'Español, leer la constitución y seguir tasks en orden.'],
@@ -312,7 +312,7 @@ const resto = [
 
   h1('5. Cierre del proyecto'),
   h2('5.1 Entrega final del software'),
-  p('El código completo está en GitHub (rama version-2.9). Hoy el sistema corre en una computadora local (API en el puerto 3000, panel en /panel y app en el emulador o el celular). El despliegue planeado es Hostinger VPS KVM 1 ($131.41 MXN al mes), que incluye la API, el panel y MySQL en un solo servidor.'),
+  p('El código completo está en GitHub, en el repositorio público truck-on-route-publico (copia de la rama version-2.9). Hoy el sistema corre en una computadora local (API en el puerto 3000, panel en /panel y app en el emulador o el celular). El despliegue planeado es Hostinger VPS KVM 1 ($131.41 MXN al mes), que incluye la API, el panel y MySQL en un solo servidor.'),
   h2('5.2 Viabilidad y deuda técnica'),
   tabla([4200, 5160], ['Deuda técnica', 'Cómo se resuelve'], [
     ['La pantalla de Perfil tiene datos de ejemplo de una integrante del equipo (T034).', 'Mostrar los datos de la cuenta con sesión; antes de hacer público el repositorio.'],
@@ -335,7 +335,7 @@ const resto = [
 
   h1('Anexo: enlaces'),
   ...[
-    ['Repositorio (rama version-2.9): ', ARBOL],
+    ['Repositorio público: ', ARBOL],
     ['Diagrama de arquitectura: ', ARBOL + 'docs/diagramas/arquitectura.html'],
     ['Diagrama de la base de datos: ', ARBOL + 'docs/diagramas/base-de-datos.html'],
     ['Constitución: ', ARBOL + '.specify/memory/constitution.md'],
