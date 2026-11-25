@@ -1,14 +1,11 @@
 <!--
 Informe de sincronización (Sync Impact Report)
-- Versión: 2.1.0 → 3.0.0 (MAJOR: se redefinen los principios I y III)
-- Principios modificados:
-  - I. Alcance por fases → se agrega la Fase 3 (spec 004): cuentas con rol, alta de camiones y choferes, recorridos, mensajes al chofer y avisos al ciudadano
-  - III. Partir de lo que existe → el login y el registro ya consultan la API (login real); la pantalla de gestión con "admin123" se retira
-  - II. Se agrega: los datos de la Fase 3 se guardan en memoria y en un archivo JSON local
-  - IV. Se agrega: contraseñas con hash scrypt y sesiones con token
-- Principio sin cambio: V
-- Specs revisadas: specs/004-roles-recorridos-avisos (nueva)
-- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0, v2.0.0 y v2.1.0)
+- Versión: 3.0.0 → 4.0.0 (MAJOR: se redefine el principio III)
+- Principio modificado:
+  - III. Partir de lo que existe → los colores y el logo se conservan, pero ya se puede cambiar el acomodo de las pantallas, la tipografía (Poppins incluida en la app) y agregar animaciones cortas (spec 006)
+- Principios sin cambio: I, II, IV y V
+- Specs revisadas: specs/006-rediseno-visual (nueva)
+- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0, v2.0.0, v2.1.0 y v3.0.0)
 -->
 
 # Truck on Rute Constitution
@@ -33,7 +30,9 @@ La API funciona siempre en memoria. Los datos de la Fase 3 (usuarios, camiones, 
 
 ### III. Partir de lo que existe
 
-La app original se cambia solo lo necesario. El diseño (colores, logo, tarjetas) se conserva.
+La app original se cambia solo lo necesario. Los **colores** (verde 0xFF019B43, verde oscuro 0xFF0A7D2C, fondos claros, blanco, grises, y el amarillo y rojo de los avisos) y el **logo** se conservan.
+
+Desde v4.0.0 (spec 006): se puede cambiar el acomodo de las pantallas, la tipografía (una fuente incluida en la app, sin descargarla) y agregar animaciones cortas, siempre que la maqueta la apruebe el equipo antes de programar y que no cambie lo que hace la app (login, roles, avisos, cercanía y mapa).
 
 Excepción (desde v2.1.0, spec 003): el login y el registro pueden **validar el formato del correo** (que tenga `@`, nombre y un dominio con extensión, como `nombre@gmail.com`) y mostrar un mensaje si no es válido. Desde v3.0.0 (spec 004) el login sí es real: se valida el formato y luego la API revisa el correo y la contraseña y devuelve el rol. El registro crea una cuenta de ciudadano. La pantalla "Gestión de usuarios" con la clave fija `admin123` se retira: el administrador trabaja en el panel web con su propia cuenta.
 
@@ -65,5 +64,6 @@ La validación y las rutas de la API tienen tests con `node --test`. Cada etapa 
 | 2.0.0 | 2026-11-02 | MAJOR | La versión 2.6 (spec 002, implementada el 2026-10-23 a petición del profesor) agregó historial, panel de administrador y MySQL, que la v1.0.0 dejaba fuera de alcance. La auditoría del 2026-11-02 lo detectó y esta enmienda lo formaliza (registrado después). Se redefinen los principios I y II, se agrega la regla del usuario de MySQL sin `root` (IV) y la regla de registrar con fecha real lo que se documenta después. |
 | 2.1.0 | 2026-11-02 | MINOR | Al probar la app, el equipo vio que el login aceptaba textos como `hola.com` (sin `@`). Se permite validar el formato del correo en login y registro (spec 003). La enmienda se hizo antes de escribir el código. |
 | 3.0.0 | 2026-11-11 | MAJOR | El equipo pidió que el sistema funcione completo para administrador, chofer y ciudadano: login real con rol, alta de camiones y choferes, recorridos, indicaciones al chofer y avisos de "camión en ruta" y "camión cerca". Se redefinen los principios I y III, y se agregan reglas de guardado (II) y de contraseñas y sesiones (IV). La enmienda se hizo antes de escribir el código (spec 004). |
+| 4.0.0 | 2026-11-25 | MAJOR | El equipo, al recorrer la v2.9 el 2026-11-24, dijo que la app "se ve muy acartonada y aburrida" y pidió un diseño más llamativo. Aprobó la maqueta del rediseño (Login, Inicio, Chofer y Perfil) y pidió mantener los verdes. Se redefine el principio III: se conservan colores y logo, y se permite cambiar acomodo, tipografía y animaciones (spec 006). La enmienda se hizo antes de escribir el código. |
 
-**Version**: 3.0.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-11
+**Version**: 4.0.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-25

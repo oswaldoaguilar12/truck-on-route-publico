@@ -1,6 +1,9 @@
 package com.example.truckonroute.ui
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -60,15 +63,28 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(drawerContainerColor = Color.White) {
-                // Versión 2.9: encabezado del menú con el degradado verde y burbujas
+                // Versión 2.10 (FR-618): encabezado del menú con el logo nuevo y quién inició sesión
                 Box(
                     modifier = Modifier.fillMaxWidth().background(DegradadoVerde)
                 ) {
                     BurbujasEncabezado()
-                    Column(Modifier.padding(24.dp)) {
-                        Icon(Icons.Default.LocalShipping, null, tint = Color.White, modifier = Modifier.size(40.dp))
-                        Spacer(Modifier.height(8.dp))
-                        Text("TRUCK ON ROUTE", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Column(Modifier.statusBarsPadding().padding(24.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LogoTor(Modifier.size(48.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Truck on Route", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
+                        Spacer(Modifier.height(20.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(44.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
+                                Text(usuario.nombre.take(1).uppercase().ifBlank { "?" }, color = GreenDark, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text(usuario.nombre, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Text(usuario.correo, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
 
@@ -83,7 +99,14 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Home, null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    // v2.10: la opción elegida en verde claro (antes salía el morado que trae Material)
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = GreenMain.copy(alpha = 0.14f),
+                        selectedIconColor = GreenDark,
+                        selectedTextColor = GreenDark,
+                        unselectedIconColor = TextoGrisTor
+                    )
                 )
 
                 // Opción: Ayuda y Soporte
@@ -95,7 +118,14 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.HelpOutline, null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    // v2.10: la opción elegida en verde claro (antes salía el morado que trae Material)
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = GreenMain.copy(alpha = 0.14f),
+                        selectedIconColor = GreenDark,
+                        selectedTextColor = GreenDark,
+                        unselectedIconColor = TextoGrisTor
+                    )
                 )
 
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -109,17 +139,24 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                         onLogout()
                     },
                     icon = { Icon(Icons.Default.Logout, null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    // v2.10: la opción elegida en verde claro (antes salía el morado que trae Material)
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = GreenMain.copy(alpha = 0.14f),
+                        selectedIconColor = GreenDark,
+                        selectedTextColor = GreenDark,
+                        unselectedIconColor = TextoGrisTor
+                    )
                 )
             }
         }
     ) {
         // --- CONTENIDO ---
         run {
+            // Versión 2.10 (spec 006): sin encabezado; en Inicio el mapa llega hasta arriba
+            // (contentWindowInsets = 0: cada pantalla deja su propio espacio para la barra de estado)
             Scaffold(
-                topBar = {
-                    HeaderSection(onMenuClick = { scope.launch { drawerState.open() } })
-                },
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 bottomBar = {
                     // Versión 2.9: barra inferior con sombra y la "píldora" verde clara en la opción elegida
                     NavigationBar(
@@ -145,7 +182,19 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                 }
             ) { padding ->
                 Box(modifier = Modifier.padding(padding)) {
-                    if (selectedTab == 0) MainContent(usuario) else PerfilScreen(usuario)
+                    // Versión 2.10 (FR-615): Inicio y Perfil cambian deslizándose en lugar de brincar
+                    AnimatedContent(
+                        targetState = selectedTab,
+                        transitionSpec = {
+                            val lado = if (targetState > initialState) 1 else -1
+                            (slideInHorizontally(tween(280)) { ancho -> lado * ancho / 4 } + fadeIn(tween(280))) togetherWith
+                                fadeOut(tween(160))
+                        },
+                        label = "pestanas"
+                    ) { pestana ->
+                        if (pestana == 0) MainContent(usuario, onMenuClick = { scope.launch { drawerState.open() } })
+                        else PerfilScreen(usuario, onLogout)
+                    }
                 }
             }
         }
@@ -164,45 +213,287 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
 
 }
 
+// Versión 2.10 (spec 006, FR-601): el mapa ocupa casi toda la pantalla.
+// Encima flotan el buscador, el botón del menú y la etiqueta del estado.
+// Abajo, una hoja que se desliza con la distancia, los datos del recorrido y los avisos.
+private val ALTO_HOJA_CERRADA = 250.dp
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainContent(usuario: Usuario) {
-    // Versión 2.8: se vuelve a usar la lista real de 83 colonias de Huauchinango (data/Colonias.kt, versión 2.5);
-    // esta copia tenía otra vez la lista de ejemplo con colonias de Pachuca
+fun MainContent(usuario: Usuario, onMenuClick: () -> Unit = {}) {
+    // Versión 2.8: se vuelve a usar la lista real de 83 colonias de Huauchinango (data/Colonias.kt, versión 2.5)
     var textoBusqueda by remember { mutableStateOf("") }
     val filtradas = buscarColonias(textoBusqueda)
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(BackgroundGray)
-            .verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // BUSCADOR
-        SearchBarSection(textoBusqueda) { textoBusqueda = it }
+    val datos = rememberDatosCamion()
+    var seguirCamion by remember { mutableStateOf(true) } // false: el usuario movió el mapa a mano
+    val estado = calcularEstado(datos.ubicacion, datos.cargando, datos.ahora)
 
-        // SUGERENCIAS DE BÚSQUEDA
-        // (no se muestran si ya se eligió una colonia de la lista)
-        if (filtradas.isNotEmpty() && textoBusqueda !in filtradas) {
-            TarjetaTor {
-                Column(Modifier.padding(8.dp)) {
-                    filtradas.forEach { col ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { textoBusqueda = col }.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Place, null, tint = GreenMain, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text(col)
+    BottomSheetScaffold(
+        scaffoldState = rememberBottomSheetScaffoldState(),
+        sheetPeekHeight = ALTO_HOJA_CERRADA,
+        sheetShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        sheetContainerColor = Color.White,
+        sheetShadowElevation = 16.dp,
+        sheetDragHandle = {
+            // La rayita gris que indica que la hoja se puede deslizar
+            Box(Modifier.padding(top = 10.dp, bottom = 6.dp).size(width = 44.dp, height = 5.dp).background(Color(0xFFD6DCD8), RoundedCornerShape(3.dp)))
+        },
+        sheetContent = { HojaCamion(usuario, datos, estado) },
+        containerColor = BackgroundGray
+    ) { _ ->
+        Box(Modifier.fillMaxSize()) {
+            // Truck on Rute 2.5: mapa con la ubicación real (ahora a pantalla completa)
+            MapaCamion(
+                datos = datos,
+                seguirCamion = seguirCamion,
+                onMoverMapa = { seguirCamion = false },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Buscador, menú, sugerencias y etiquetas, flotando sobre el mapa
+            Column(
+                Modifier.fillMaxWidth().statusBarsPadding().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.entradaSuave()) {
+                    Box(Modifier.weight(1f)) { SearchBarSection(textoBusqueda) { textoBusqueda = it } }
+                    Spacer(Modifier.width(10.dp))
+                    BotonRedondo(Icons.Default.Menu, "Menú", onMenuClick, fondo = GreenMain, colorIcono = Color.White)
+                }
+
+                // SUGERENCIAS DE BÚSQUEDA (no se muestran si ya se eligió una colonia de la lista)
+                if (filtradas.isNotEmpty() && textoBusqueda !in filtradas) {
+                    TarjetaTor {
+                        Column(Modifier.padding(8.dp)) {
+                            filtradas.forEach { col ->
+                                Row(
+                                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { textoBusqueda = col }.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Place, null, tint = GreenMain, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(col)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // FR-603: estado del camión como etiqueta de color, y la colonia del usuario
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.entradaSuave(retrasoMs = 100)) {
+                        EtiquetaEstado(estado.etiqueta, estado.color, solida = true)
+                        if (usuario.colonia.isNotBlank()) {
+                            EtiquetaEstado(usuario.colonia, TextoOscuroTor, conPunto = false,
+                                modifier = Modifier.shadow(6.dp, RoundedCornerShape(50)).background(Color.White, RoundedCornerShape(50)))
                         }
                     }
                 }
             }
+
+            // Versión 2.6: botón para volver a centrar el mapa en el camión (arriba de la hoja)
+            BotonRedondo(
+                Icons.Default.MyLocation, "Centrar en el camión",
+                onClick = { seguirCamion = true },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = ALTO_HOJA_CERRADA + 16.dp),
+                colorIcono = if (seguirCamion) GreenMain else GreenDark
+            )
+        }
+    }
+}
+
+// Botón redondo flotante (menú y centrar)
+@Composable
+private fun BotonRedondo(
+    icono: androidx.compose.ui.graphics.vector.ImageVector,
+    descripcion: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    fondo: Color = Color.White,
+    colorIcono: Color = GreenDark
+) {
+    val interaccion = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(
+        modifier
+            .size(52.dp)
+            .alPresionar(interaccion)
+            .shadow(10.dp, CircleShape, ambientColor = fondo.copy(alpha = 0.5f), spotColor = GreenDark.copy(alpha = 0.35f))
+            .background(fondo, CircleShape)
+            .clip(CircleShape)
+            .clickable(interactionSource = interaccion, indication = LocalIndication.current, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icono, descripcion, tint = colorIcono, modifier = Modifier.size(24.dp))
+    }
+}
+
+// Contenido de la hoja inferior de Inicio
+@Composable
+private fun HojaCamion(usuario: Usuario, datos: DatosCamion, estado: EstadoCamion) {
+    val contexto = LocalContext.current
+    var avisos by remember { mutableStateOf<List<Aviso>>(emptyList()) }
+    var avisarCerca by remember { mutableStateOf(Sesion.avisarCerca(contexto)) }
+    var distancia by remember { mutableStateOf<Float?>(null) }
+    var nota by remember { mutableStateOf<String?>(null) }
+    var avisosListos by remember { mutableStateOf(false) } // v2.10: false = todavía no llegan (se ven esqueletos)
+    val vibrar = LocalHapticFeedback.current
+
+    // Versión 2.10 (FR-616): cuando llega un aviso nuevo (no la primera vez), el celular vibra un poquito
+    val idMasNuevo = avisos.firstOrNull()?.id
+    var idAnterior by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(idMasNuevo) {
+        if (idMasNuevo != null && idAnterior != null && idMasNuevo != idAnterior) {
+            vibrar.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+        if (idMasNuevo != null) idAnterior = idMasNuevo
+    }
+
+    // Versión 2.8 (spec 004, H19 y H20): con la app abierta revisa cada 20 s
+    // avisos nuevos (y los notifica) y, si está activo, la distancia
+    LaunchedEffect(avisarCerca) {
+        while (true) {
+            Vigilancia.revisarAvisos(contexto)
+            avisos = ApiTor.avisos(null).sortedByDescending { it.fecha }.take(5)
+            avisosListos = true
+            distancia = if (avisarCerca) Vigilancia.revisarCercania(contexto) else null
+            delay(20_000)
+        }
+    }
+
+    fun activar() {
+        Sesion.guardarAvisarCerca(contexto, true)
+        avisarCerca = true
+        nota = null
+        ServicioCercania.iniciar(contexto)
+    }
+
+    val pedirUbicacion = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { resultado ->
+        if (resultado.values.any { it }) activar()
+        else nota = "Sin permiso de ubicación no podemos saber si el camión está cerca de ti."
+    }
+
+    Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // --- Título grande: la distancia (si está activo el aviso) o el estado del camión ---
+        val d = distancia
+        // FR-614: mientras llega la primera respuesta se ven esqueletos en lugar del título y los datos
+        if (datos.cargando) {
+            Esqueleto(Modifier.width(120.dp).height(14.dp))
+            Esqueleto(Modifier.fillMaxWidth(0.7f).height(30.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                repeat(3) { Esqueleto(Modifier.weight(1f).height(64.dp), radio = 18.dp) }
+            }
+        } else Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                if (avisarCerca && d != null && datos.ubicacion != null) {
+                    Text("El camión está a", fontSize = 13.sp, color = TextoGrisTor)
+                    Text(
+                        if (d < 1000) "${d.toInt()} m de ti" else String.format(java.util.Locale.US, "%.1f km de ti", d / 1000),
+                        fontSize = 28.sp, fontWeight = FontWeight.Bold, color = GreenDark, lineHeight = 32.sp
+                    )
+                } else {
+                    Text(estado.hora?.let { "Última señal: $it" } ?: "¿Dónde está el camión?", fontSize = 13.sp, color = TextoGrisTor)
+                    Text(estado.titulo, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextoOscuroTor, lineHeight = 28.sp)
+                }
+            }
+            // La etiqueta solo se pone junto a la distancia; si el título ya dice el estado, sería repetirlo
+            if (estado.hora != null && avisarCerca && d != null && datos.ubicacion != null) {
+                EtiquetaEstado("${estado.etiqueta} · ${estado.hora}", estado.color, conPunto = false)
+            }
         }
 
-        // Truck on Rute 2.5: mapa con la ubicación real en lugar del camión animado con "23 min" fijo
-        TruckMapSection()
+        // --- Versión 2.6: velocidad, distancia y puntos que calcula la API, en tres cuadritos ---
+        val e = datos.estadisticas
+        if (datos.ubicacion != null && e != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DatoHoja(e.velocidadKmh?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "--", "km/h", Modifier.weight(1f))
+                DatoHoja(String.format(java.util.Locale.US, "%.2f", e.distanciaKm), "km recorridos", Modifier.weight(1f))
+                DatoHoja("${e.puntosRecibidos}", "puntos", Modifier.weight(1f))
+            }
+        }
 
-        // Versión 2.8 (spec 004): avisos reales en lugar de textos fijos
-        AvisosSection(usuario)
+        if (usuario.rol == "administrador") {
+            FilaAviso(Icons.Default.AdminPanelSettings, "Eres administrador", "Tu panel está en la computadora: abre /panel en el navegador.", destacado = false)
+        }
+
+        // --- Avisos ---
+        Text("Avisos", fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = TextoOscuroTor)
+        if (!avisosListos) {
+            repeat(2) { Esqueleto(Modifier.fillMaxWidth().height(64.dp), radio = 18.dp) }
+        } else if (avisos.isEmpty()) {
+            EstadoVacio(Icons.Default.NotificationsNone, "Sin avisos por ahora", "Te avisamos cuando el camión salga a ruta.")
+        } else {
+            // El más nuevo va destacado en verde claro
+            avisos.forEachIndexed { i, a ->
+                // El más nuevo rebota cuando llega (FR-616)
+                val efecto = if (i == 0) Modifier.rebote(a.id) else Modifier.entradaSuave(retrasoMs = i * 60)
+                FilaAviso(Icons.Default.Notifications, a.titulo, a.mensaje, destacado = i == 0, modifier = efecto)
+            }
+        }
+
+        // --- Interruptor de cercanía ---
+        Row(
+            Modifier.fillMaxWidth().background(FondoTor, RoundedCornerShape(18.dp)).padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(40.dp).background(VerdeClaroTor, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.NearMe, null, tint = GreenMain, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Avisarme cuando esté cerca", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextoOscuroTor)
+                Text("Cada 5 minutos revisamos si el camión está a menos de 500 m de ti", fontSize = 12.sp, color = TextoGrisTor, lineHeight = 16.sp)
+            }
+            Switch(
+                checked = avisarCerca,
+                onCheckedChange = { activo ->
+                    if (activo) {
+                        if (Permisos.hayUbicacion(contexto)) activar()
+                        else pedirUbicacion.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    } else {
+                        Sesion.guardarAvisarCerca(contexto, false)
+                        avisarCerca = false
+                        ServicioCercania.detener(contexto)
+                    }
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = GreenMain)
+            )
+        }
+        nota?.let { Text(it, color = Color(0xFFB00020), fontSize = 13.sp) }
+    }
+}
+
+// Cuadrito con un número grande y su descripción
+@Composable
+private fun DatoHoja(valor: String, titulo: String, modifier: Modifier = Modifier) {
+    Column(modifier.background(FondoTor, RoundedCornerShape(18.dp)).padding(12.dp)) {
+        Text(valor, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextoOscuroTor)
+        Text(titulo, fontSize = 12.sp, color = TextoGrisTor)
+    }
+}
+
+// Un aviso: ícono en círculo, título y texto. El destacado va en verde claro con el ícono en verde
+@Composable
+private fun FilaAviso(
+    icono: androidx.compose.ui.graphics.vector.ImageVector,
+    titulo: String,
+    texto: String,
+    destacado: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier.fillMaxWidth().background(if (destacado) VerdeClaroTor else FondoTor, RoundedCornerShape(18.dp)).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(40.dp).background(if (destacado) GreenMain else Color.White, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icono, null, tint = if (destacado) Color.White else GreenMain, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(titulo, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = if (destacado) GreenDark else TextoOscuroTor)
+            Text(texto, fontSize = 12.sp, color = TextoGrisTor, lineHeight = 16.sp)
+        }
     }
 }
 
@@ -247,8 +538,8 @@ fun SearchBarSection(query: String, onQueryChange: (String) -> Unit) {
         value = query,
         onValueChange = onQueryChange,
         // Versión 2.9: buscador en forma de píldora con sombra suave
-        modifier = Modifier.fillMaxWidth().sombraSuave(radio = 28.dp, altura = 6.dp),
-        placeholder = { Text("Buscar colonia...") },
+        modifier = Modifier.fillMaxWidth().height(54.dp).shadow(10.dp, RoundedCornerShape(28.dp), spotColor = GreenDark.copy(alpha = 0.3f)),
+        placeholder = { Text("Busca tu colonia") },
         leadingIcon = { Icon(Icons.Default.Search, null, tint = GreenMain) },
         trailingIcon = {
             if (query.isNotEmpty()) {
@@ -306,88 +597,6 @@ private fun ItemConIcono(icono: androidx.compose.ui.graphics.vector.ImageVector,
                     Text(texto, fontSize = 14.sp, color = Color.Gray)
                 }
             }
-        }
-    }
-}
-
-// Versión 2.8 (spec 004, H19 y H20): avisos del camión y "Avisarme cuando esté cerca".
-@Composable
-fun AvisosSection(usuario: Usuario) {
-    val contexto = LocalContext.current
-    var avisos by remember { mutableStateOf<List<Aviso>>(emptyList()) }
-    var avisarCerca by remember { mutableStateOf(Sesion.avisarCerca(contexto)) }
-    var distancia by remember { mutableStateOf<Float?>(null) }
-    var nota by remember { mutableStateOf<String?>(null) }
-
-    // Con la app abierta revisa cada 20 s: avisos nuevos (y los notifica) y, si está activo, la distancia
-    LaunchedEffect(avisarCerca) {
-        while (true) {
-            Vigilancia.revisarAvisos(contexto)
-            avisos = ApiTor.avisos(null).sortedByDescending { it.fecha }.take(5)
-            distancia = if (avisarCerca) Vigilancia.revisarCercania(contexto) else null
-            delay(20_000)
-        }
-    }
-
-    fun activar() {
-        Sesion.guardarAvisarCerca(contexto, true)
-        avisarCerca = true
-        nota = null
-        ServicioCercania.iniciar(contexto)
-    }
-
-    val pedirUbicacion = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { resultado ->
-        if (resultado.values.any { it }) activar()
-        else nota = "Sin permiso de ubicación no podemos saber si el camión está cerca de ti."
-    }
-
-    if (usuario.rol == "administrador") {
-        NotificationItem("Eres administrador", "Tu panel está en la computadora: abre /panel en el navegador.")
-    }
-
-    TituloSeccion("Avisos", Icons.Default.Notifications)
-    if (avisos.isEmpty()) {
-        NotificationItem("Sin avisos por ahora", "Te avisamos cuando el camión salga a ruta.")
-    } else {
-        avisos.forEach { NotificationItem(it.titulo, it.mensaje) }
-    }
-
-    // Interruptor de cercanía
-    // Versión 2.9: tarjeta con sombra suave e ícono
-    TarjetaTor {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconoCirculo(Icons.Default.NearMe)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Avisarme cuando esté cerca", fontWeight = FontWeight.Bold)
-                    Text("Cada 5 minutos revisamos si el camión está a menos de 500 m de ti", fontSize = 13.sp, color = Color.Gray)
-                }
-                Switch(
-                    checked = avisarCerca,
-                    onCheckedChange = { activo ->
-                        if (activo) {
-                            if (Permisos.hayUbicacion(contexto)) activar()
-                            else pedirUbicacion.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                        } else {
-                            Sesion.guardarAvisarCerca(contexto, false)
-                            avisarCerca = false
-                            ServicioCercania.detener(contexto)
-                        }
-                    },
-                    colors = SwitchDefaults.colors(checkedTrackColor = GreenMain)
-                )
-            }
-            val d = distancia
-            if (avisarCerca && d != null) {
-                // Versión 2.9: la distancia se muestra en una "píldora" verde clara
-                Text(
-                    if (d < 1000) "El camión está a ${d.toInt()} m de ti" else String.format(java.util.Locale.US, "El camión está a %.1f km de ti", d / 1000),
-                    color = GreenDark, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 12.dp).background(GreenMain.copy(alpha = 0.12f), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 6.dp)
-                )
-            }
-            nota?.let { Text(it, color = Color(0xFFB00020), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
         }
     }
 }

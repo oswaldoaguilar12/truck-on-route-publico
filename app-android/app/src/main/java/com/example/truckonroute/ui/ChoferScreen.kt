@@ -1,6 +1,10 @@
 package com.example.truckonroute.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -77,50 +81,92 @@ fun ChoferScreen(usuario: Usuario, onLogout: () -> Unit) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Fondo)) {
-        // Encabezado con el mismo verde de la app
-        // Versión 2.9: con sombra, esquinas más redondas, burbujas y avatar con la inicial
-        val forma = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
-        Box(
-            Modifier.fillMaxWidth()
-                .shadow(12.dp, forma, ambientColor = VerdeOscuro.copy(alpha = 0.35f), spotColor = VerdeOscuro.copy(alpha = 0.35f))
-                .clip(forma)
-                .background(Brush.horizontalGradient(listOf(Verde, VerdeOscuro)))
-        ) {
-            BurbujasEncabezado()
-            Row(Modifier.padding(top = 40.dp, bottom = 22.dp, start = 20.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(46.dp).background(Color.White.copy(alpha = 0.2f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(usuario.nombre.take(1).uppercase(), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    // Versión 2.10 (spec 006): encabezado verde con saludo y "Hoy te toca", y la tarjeta del recorrido encimada.
+    // El recorrido principal es el que está en curso o, si no hay, el siguiente programado.
+    val principal = recorridos.firstOrNull { it.estado == "en_curso" }
+        ?: recorridos.firstOrNull { it.estado == "programado" }
+        ?: recorridos.firstOrNull()
+
+    Column(Modifier.fillMaxSize().background(FondoTor).verticalScroll(rememberScrollState())) {
+        EncabezadoVerde {
+            Column(Modifier.padding(start = 22.dp, end = 14.dp, top = 20.dp, bottom = 72.dp).entradaSuave(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(46.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
+                        Text(usuario.nombre.take(1).uppercase(), color = VerdeOscuro, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(saludo(), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+                        Text(usuario.nombre, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    IconButton(onClick = onLogout, modifier = Modifier.background(Color.White.copy(alpha = 0.16f), CircleShape)) {
+                        Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White)
+                    }
                 }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Hola, ${usuario.nombre}", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Chofer · Truck on Route", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+                Column {
+                    Text(if (principal != null) "Hoy te toca" else "Chofer · Truck on Route", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+                    Text(principal?.ruta ?: "Sin recorrido", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp)
                 }
-                IconButton(onClick = onLogout) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White) }
             }
         }
 
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            Modifier.fillMaxWidth().offset(y = (-48).dp).padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            when {
+                cargando -> TarjetaTor {
+                    // FR-614: esqueleto de la tarjeta mientras llega el recorrido
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Esqueleto(Modifier.fillMaxWidth(0.6f).height(20.dp))
+                        Esqueleto(Modifier.fillMaxWidth(0.4f).height(14.dp))
+                        repeat(3) { Esqueleto(Modifier.fillMaxWidth().height(30.dp)) }
+                        Esqueleto(Modifier.fillMaxWidth().height(60.dp), radio = 30.dp)
+                    }
+                }
+                recorridos.isEmpty() -> TarjetaTor {
+                    EstadoVacio(Icons.Default.LocalShipping, "Sin recorridos por ahora", "El administrador te los asigna desde el panel.", Modifier.padding(horizontal = 16.dp))
+                }
+                else -> recorridos.forEachIndexed { i, rec ->
+                    Box(Modifier.entradaSuave(retrasoMs = 80 + i * 60)) {
+                        TarjetaRecorrido(rec, ocupado, onIniciar = { cambiar(rec, "iniciar") }, onTerminar = { cambiar(rec, "terminar") })
+                    }
+                }
+            }
             error?.let { Text(it, color = Color(0xFFB00020)) }
 
-            TituloSeccion("Mi recorrido", Icons.Default.LocalShipping)
-            when {
-                cargando -> CircularProgressIndicator(color = Verde)
-                recorridos.isEmpty() -> TarjetaSimple("Todavía no tienes recorridos asignados. El administrador los asigna desde el panel.")
-                else -> recorridos.forEach { rec -> TarjetaRecorrido(rec, ocupado, onIniciar = { cambiar(rec, "iniciar") }, onTerminar = { cambiar(rec, "terminar") }) }
+            // Mensajes del administrador
+            TarjetaTor(Modifier.entradaSuave(retrasoMs = 160)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(40.dp).background(VerdeClaroTor, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.ChatBubbleOutline, null, tint = VerdeOscuro, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("Mensajes del administrador", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextoOscuroTor)
+                            if (mensajes.isEmpty()) Text("Todo tranquilo, sin mensajes nuevos", fontSize = 12.sp, color = TextoGrisTor)
+                        }
+                    }
+                    mensajes.forEach { m ->
+                        Column(Modifier.fillMaxWidth().background(FondoTor, RoundedCornerShape(14.dp)).padding(12.dp)) {
+                            Text(horaCorta(m.fecha), fontSize = 11.sp, color = TextoGrisTor)
+                            Text(m.texto, fontSize = 14.sp, color = TextoOscuroTor)
+                        }
+                    }
+                }
             }
-
-            TituloSeccion("Mensajes del administrador", Icons.Default.Email)
-            if (mensajes.isEmpty()) TarjetaSimple("Sin mensajes.")
-            mensajes.forEach { MessageItem(horaCorta(it.fecha), it.texto) }
         }
+    }
+}
+
+// Saludo según la hora del celular
+private fun saludo(): String {
+    val hora = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    return when (hora) {
+        in 5..11 -> "Buenos días"
+        in 12..18 -> "Buenas tardes"
+        else -> "Buenas noches"
     }
 }
 
@@ -131,74 +177,82 @@ private fun TarjetaRecorrido(rec: Recorrido, ocupado: Boolean, onIniciar: () -> 
         "terminado" -> "Terminado" to Color.Gray
         else -> "Programado" to Color(0xFFB45309)
     }
-    // Versión 2.9: tarjeta con sombra suave
+    // Versión 2.10: tarjeta grande con esquinas de 26 dp, colonias numeradas y botón tipo píldora
     TarjetaTor {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconoCirculo(Icons.Default.LocalShipping)
-                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(rec.ruta, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text("Camión ${rec.camion} · ${fechaCorta(rec.fecha)}", fontSize = 13.sp, color = Color.Gray)
+                    Text(rec.ruta, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, color = TextoOscuroTor)
+                    val horario = if (rec.horario.isNotBlank()) " · ${rec.horario}" else ""
+                    Text("Camión ${rec.camion}$horario", fontSize = 13.sp, color = TextoGrisTor)
+                    Text(fechaCorta(rec.fecha), fontSize = 12.sp, color = TextoGrisTor)
                 }
-                Text(textoEstado, color = colorEstado, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.background(colorEstado.copy(alpha = 0.12f), RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 4.dp))
+                EtiquetaEstado(textoEstado, colorEstado)
             }
-            if (rec.horario.isNotBlank()) Text("Horario: ${rec.horario}", fontSize = 14.sp)
 
-            HorizontalDivider(color = Fondo)
-            Text("Colonias en orden", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = VerdeOscuro)
-            // Versión 2.9: las colonias se unen con una línea, como paradas de una ruta
-            rec.colonias.forEachIndexed { i, c ->
-                Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(24.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        if (rec.colonias.size > 1) {
-                            Box(
-                                Modifier.width(2.dp).fillMaxHeight(if (i == 0 || i == rec.colonias.lastIndex) 0.5f else 1f)
-                                    .align(if (i == 0) Alignment.BottomCenter else if (i == rec.colonias.lastIndex) Alignment.TopCenter else Alignment.Center)
-                                    .background(Verde.copy(alpha = 0.3f))
-                            )
-                        }
-                        Box(Modifier.size(24.dp).background(DegradadoVerde, CircleShape), contentAlignment = Alignment.Center) {
-                            Text("${i + 1}", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                        }
+            // Versión 2.10 (FR-617): con la ruta en curso, el chofer toca cada colonia al terminarla
+            // y una barrita muestra cuántas lleva. Es solo en su pantalla (no se guarda en la API).
+            val enCurso = rec.estado == "en_curso"
+            var hechas by rememberSaveable(rec.id) { mutableIntStateOf(0) }
+            val total = rec.colonias.size
+            if (enCurso && total > 0) {
+                val avance by animateFloatAsState(hechas.toFloat() / total, label = "avance")
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row {
+                        Text("Vas en", fontSize = 13.sp, color = TextoGrisTor, modifier = Modifier.weight(1f))
+                        Text("$hechas de $total colonias", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = VerdeOscuro)
                     }
-                    Spacer(Modifier.width(10.dp))
-                    Text(c, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
+                    LinearProgressIndicator(
+                        progress = { avance },
+                        modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(50)),
+                        color = Verde,
+                        trackColor = VerdeClaroTor
+                    )
+                    Text("Toca cada colonia cuando la termines", fontSize = 12.sp, color = TextoGrisTor)
+                }
+            }
+
+            // Colonias en orden. Terminada = palomita; la que sigue = verde fuerte; las demás = verde claro
+            Column {
+                rec.colonias.forEachIndexed { i, c ->
+                    val terminada = enCurso && i < hechas
+                    val actual = if (enCurso) i == hechas else i == 0
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .then(if (enCurso) Modifier.clickable { hechas = if (i + 1 == hechas) i else i + 1 } else Modifier)
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            Modifier.size(30.dp).background(if (terminada || actual) Verde else VerdeClaroTor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (terminada) Icon(Icons.Default.Check, "Terminada", tint = Color.White, modifier = Modifier.size(18.dp))
+                            else Text("${i + 1}", fontSize = 13.sp, color = if (actual) Color.White else VerdeOscuro, fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            c, fontSize = 15.sp,
+                            fontWeight = if (actual) FontWeight.Medium else FontWeight.Normal,
+                            color = if (terminada) TextoGrisTor else TextoOscuroTor,
+                            textDecoration = if (terminada) TextDecoration.LineThrough else null
+                        )
+                    }
                 }
             }
 
             // Indicaciones del administrador: solo las ve el chofer
             if (rec.indicaciones.isNotBlank()) {
-                Row(
-                    Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(14.dp))
-                        .border(1.dp, Color(0xFFB45309).copy(alpha = 0.25f), RoundedCornerShape(14.dp)).padding(12.dp)
-                ) {
-                    Icon(Icons.Default.Info, null, tint = Color(0xFFB45309))
-                    Spacer(Modifier.width(8.dp))
-                    Text(rec.indicaciones, fontSize = 14.sp)
+                Row(Modifier.fillMaxWidth().background(AmarilloFondoTor, RoundedCornerShape(16.dp)).padding(12.dp)) {
+                    Icon(Icons.Default.Info, null, tint = AmarilloTextoTor, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(rec.indicaciones, fontSize = 13.sp, color = TextoOscuroTor)
                 }
             }
 
             when (rec.estado) {
-                "programado" -> Button(
-                    onClick = onIniciar, enabled = !ocupado, modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Verde),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 2.dp)
-                ) {
-                    Icon(Icons.Default.PlayArrow, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Iniciar ruta", fontWeight = FontWeight.Bold)
-                }
-                "en_curso" -> Button(
-                    onClick = onTerminar, enabled = !ocupado, modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB91C1C)),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 2.dp)
-                ) {
-                    Icon(Icons.Default.Stop, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Terminar ruta", fontWeight = FontWeight.Bold)
-                }
+                "programado" -> BotonPildora("Iniciar ruta", onIniciar, icono = Icons.Default.PlayArrow, habilitado = !ocupado, alto = 60.dp)
+                "en_curso" -> BotonPildora("Terminar ruta", onTerminar, color = RojoTor, icono = Icons.Default.Stop, habilitado = !ocupado, alto = 60.dp)
                 else -> {}
             }
         }

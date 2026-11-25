@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Versión 2.10 (FR-609): en Android 12 o más nuevo, el sistema muestra el ícono al abrir la app.
+         Se pinta con el mismo verde oscuro de nuestra pantalla de inicio para que el cambio no se note. -->
+    <style name="Theme.TruckOnRoute" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#0A7D2C</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+    </style>
+</resources>

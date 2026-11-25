@@ -2,31 +2,18 @@ package com.example.truckonroute.ui
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.graphics.Paint
+import com.example.truckonroute.avisos.Permisos
+import com.example.truckonroute.avisos.Vigilancia
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material3.Icon
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.truckonroute.R
 import com.example.truckonroute.data.Estadisticas
@@ -37,9 +24,12 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.util.MapTileIndex
+import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.CopyrightOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Overlay
+import org.osmdroid.views.Projection
 import org.osmdroid.views.overlay.Polyline
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,7 +40,6 @@ import java.util.TimeZone
 // Cubre R3 (ubicación en un mapa) y R9 (actualización periódica). Ver specs/001-ubicacion-tiempo-real.
 
 private val VerdeTruck = Color(0xFF019B43)
-private val VerdeOscuro = Color(0xFF0A7D2C)
 
 private const val CONSULTA_CADA_MS = 10_000L      // la app pregunta a la API cada 10 s
 private const val SIN_SENAL_DESPUES_MS = 60_000L  // más de 60 s sin datos nuevos = "Sin señal reciente"
@@ -73,19 +62,29 @@ private val MAPA_ESRI = object : OnlineTileSourceBase(
             MapTileIndex.getY(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex)
 }
 
-@Composable
-fun TruckMapSection() {
-    val contexto = LocalContext.current
+// Versión 2.10 (spec 006): lo que antes hacía TruckMapSection() se divide en dos partes:
+// 1) rememberDatosCamion(): pregunta a la API cada 10 s (igual que antes).
+// 2) MapaCamion(): solo dibuja el mapa, ahora a pantalla completa en Inicio.
+// Así la hoja inferior de Inicio puede mostrar los mismos datos sin volver a pedirlos.
 
-    // Estado de la pantalla
+// Todo lo que se sabe del camión en este momento
+data class DatosCamion(
+    val ubicacion: Ubicacion?,
+    val cargando: Boolean,
+    val ahora: Long,
+    val recorrido: List<Ubicacion>,      // versión 2.6
+    val estadisticas: Estadisticas?      // versión 2.6
+)
+
+@Composable
+fun rememberDatosCamion(): DatosCamion {
     var ubicacion by remember { mutableStateOf<Ubicacion?>(null) }
     var cargando by remember { mutableStateOf(true) }
     var ahora by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    var recorrido by remember { mutableStateOf<List<Ubicacion>>(emptyList()) } // versión 2.6
-    var estadisticas by remember { mutableStateOf<Estadisticas?>(null) }      // versión 2.6
-    var seguirCamion by remember { mutableStateOf(true) } // si es false, el usuario movió el mapa a mano
+    var recorrido by remember { mutableStateOf<List<Ubicacion>>(emptyList()) }
+    var estadisticas by remember { mutableStateOf<Estadisticas?>(null) }
 
-    // Consulta la API cada 10 s mientras esta pantalla está visible.
+    // Consulta la API cada 10 s mientras Inicio está visible.
     // Al salir de Inicio, Compose cancela este ciclo solo.
     LaunchedEffect(Unit) {
         while (true) {
@@ -99,13 +98,31 @@ fun TruckMapSection() {
             delay(CONSULTA_CADA_MS)
         }
     }
+    return DatosCamion(ubicacion, cargando, ahora, recorrido, estadisticas)
+}
 
-    // El mapa de OpenStreetMap (osmdroid) se crea una sola vez
+// Guarda el último punto donde se dibujó el camión (no es estado de Compose: no redibuja la pantalla)
+private class UltimoPunto(var punto: GeoPoint? = null)
+
+// El mapa de OpenStreetMap (osmdroid) con el camión y la línea de su recorrido.
+// seguirCamion: si es true, el mapa se mueve junto con el camión.
+// onMoverMapa: se llama cuando el usuario arrastra el mapa con el dedo.
+@Composable
+fun MapaCamion(
+    datos: DatosCamion,
+    seguirCamion: Boolean,
+    onMoverMapa: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val contexto = LocalContext.current
+    val alMover by rememberUpdatedState(onMoverMapa)
+
+    // El mapa se crea una sola vez
     val mapa = remember { crearMapa(contexto) }
     val marcador = remember {
         Marker(mapa).apply {
             icon = iconoCamion(contexto)
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER) // v2.10: el círculo va centrado en el punto
             title = "Camión recolector"
         }
     }
@@ -113,8 +130,30 @@ fun TruckMapSection() {
     val linea = remember {
         Polyline(mapa).apply {
             outlinePaint.color = android.graphics.Color.parseColor("#019B43")
-            outlinePaint.strokeWidth = 10f
+            outlinePaint.strokeWidth = 12f
+            outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
         }
+    }
+    val ultimo = remember { UltimoPunto() }
+    // Versión 2.10: pulso verde debajo del camión (FR-611) y punto azul con tu ubicación (FR-612)
+    val pulso = remember { CirculoEnMapa(contexto.resources.displayMetrics.density, android.graphics.Color.parseColor("#019B43"), 23f, false).apply { esPulso = true } }
+    val yo = remember { CirculoEnMapa(contexto.resources.displayMetrics.density, android.graphics.Color.parseColor("#1565C0"), 7f, true) }
+
+    // El pulso crece y se desvanece cada 1.5 s
+    LaunchedEffect(Unit) {
+        while (true) {
+            pulso.fase = (pulso.fase + 0.027f) % 1f
+            if (pulso.punto != null) mapa.invalidate()
+            delay(40)
+        }
+    }
+    // Tu ubicación: solo si diste permiso (se activa con "Avisarme cuando esté cerca").
+    // Se usa la última ubicación que conoce el celular, igual que el aviso de cercanía.
+    LaunchedEffect(datos.ahora) {
+        yo.punto = if (Permisos.hayUbicacion(contexto)) {
+            Vigilancia.ubicacionDelCelular(contexto)?.let { GeoPoint(it.latitude, it.longitude) }
+        } else null
+        mapa.invalidate()
     }
 
     // Libera el mapa cuando se sale de la pantalla
@@ -122,99 +161,69 @@ fun TruckMapSection() {
         onDispose { mapa.onDetach() }
     }
 
-    val estado = calcularEstado(ubicacion, cargando, ahora)
-
-    // Versión 2.9: tarjeta con sombra suave y título con ícono
-    TarjetaTor {
-        Column(Modifier.padding(14.dp)) {
-            TituloSeccion("¿Dónde está el camión?", Icons.Default.LocationOn)
-            Spacer(Modifier.height(12.dp))
-
-            // AndroidView permite usar el mapa (que es una vista clásica de Android) dentro de Compose.
-            // "update" se vuelve a ejecutar cada vez que cambia "ubicacion".
-            AndroidView(
-                factory = {
-                    // Si el usuario arrastra el mapa, deja de seguir al camión hasta que toque "Centrar"
-                    mapa.setOnTouchListener { _, evento ->
-                        if (evento.action == android.view.MotionEvent.ACTION_MOVE) seguirCamion = false
-                        false // false: el mapa sigue recibiendo el gesto normal
-                    }
-                    mapa
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, VerdeTruck.copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
-                update = { vista ->
-                    val u = ubicacion
-                    if (u != null) {
-                        val punto = GeoPoint(u.lat, u.lng)
-                        marcador.position = punto
-                        linea.setPoints(recorrido.map { GeoPoint(it.lat, it.lng) })
-                        // La línea va debajo del camión
-                        if (!vista.overlays.contains(linea)) vista.overlays.add(linea)
-                        if (!vista.overlays.contains(marcador)) vista.overlays.add(marcador)
-                        if (seguirCamion) vista.controller.animateTo(punto)
-                    } else {
-                        // Sin ubicación: no se dibuja ningún camión falso
-                        vista.overlays.remove(marcador)
-                        vista.overlays.remove(linea)
-                    }
-                    vista.invalidate()
-                }
-            )
-
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Versión 2.9: el estado va dentro de una "píldora" del mismo color, pero muy clara
-                Row(
-                    Modifier.background(estado.color.copy(alpha = 0.12f), RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(Modifier.size(9.dp).background(estado.color, CircleShape))
-                    Spacer(Modifier.width(8.dp))
-                    Text(estado.texto, color = estado.color, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-                Spacer(Modifier.weight(1f))
-                // Versión 2.6: botón para volver a centrar el mapa en el camión
-                TextButton(onClick = {
-                    seguirCamion = true
-                    ubicacion?.let { mapa.controller.animateTo(GeoPoint(it.lat, it.lng)) }
-                }) {
-                    Icon(Icons.Default.MyLocation, null, tint = VerdeOscuro, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Centrar", color = VerdeOscuro, fontWeight = FontWeight.SemiBold)
-                }
-            }
-            // Versión 2.6: velocidad y distancia que calcula la API
-            val e = estadisticas
-            if (ubicacion != null && e != null) {
-                val velocidad = e.velocidadKmh?.let { String.format(Locale.US, "%.1f km/h", it) } ?: "-- km/h"
-                val distancia = String.format(Locale.US, "%.2f km", e.distanciaKm)
-                // Versión 2.9: los datos van en tres cuadritos en lugar de una línea de texto
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DatoMapa("Velocidad", velocidad, Modifier.weight(1f))
-                    DatoMapa("Recorrido", distancia, Modifier.weight(1f))
-                    DatoMapa("Puntos", "${e.puntosRecibidos}", Modifier.weight(1f))
-                }
+    // FR-604: cuando llega una ubicación nueva, el camión se desliza en 1 s en lugar de saltar
+    LaunchedEffect(datos.ubicacion) {
+        val u = datos.ubicacion ?: return@LaunchedEffect
+        val destino = GeoPoint(u.lat, u.lng)
+        val inicio = ultimo.punto
+        ultimo.punto = destino
+        if (seguirCamion) mapa.controller.animateTo(destino)
+        if (inicio == null) {
+            marcador.position = destino // primera vez: se pone directo
+            pulso.punto = destino
+            mapa.invalidate()
+        } else {
+            animate(0f, 1f, animationSpec = tween(1000, easing = FastOutSlowInEasing)) { t, _ ->
+                marcador.position = GeoPoint(
+                    inicio.latitude + (destino.latitude - inicio.latitude) * t,
+                    inicio.longitude + (destino.longitude - inicio.longitude) * t
+                )
+                pulso.punto = marcador.position
+                mapa.invalidate()
             }
         }
     }
-}
 
-// Versión 2.9: cuadrito con un dato del recorrido (fondo verde muy claro)
-@Composable
-private fun DatoMapa(titulo: String, valor: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier.background(VerdeTruck.copy(alpha = 0.08f), RoundedCornerShape(14.dp)).padding(vertical = 8.dp, horizontal = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(valor, fontWeight = FontWeight.Bold, color = VerdeOscuro, fontSize = 14.sp)
-        Text(titulo, color = Color.Gray, fontSize = 11.sp)
+    // Botón "Centrar": cuando vuelve a seguir al camión, el mapa regresa a él
+    LaunchedEffect(seguirCamion) {
+        if (seguirCamion) ultimo.punto?.let { mapa.controller.animateTo(it) }
     }
+
+    // AndroidView permite usar el mapa (que es una vista clásica de Android) dentro de Compose.
+    // "update" se vuelve a ejecutar cada vez que cambian los datos.
+    AndroidView(
+        factory = {
+            // Si el usuario arrastra el mapa, deja de seguir al camión hasta que toque "Centrar"
+            mapa.setOnTouchListener { _, evento ->
+                if (evento.action == android.view.MotionEvent.ACTION_MOVE) alMover()
+                false // false: el mapa sigue recibiendo el gesto normal
+            }
+            mapa
+        },
+        modifier = modifier,
+        update = { vista ->
+            val u = datos.ubicacion
+            if (u != null) {
+                linea.setPoints(datos.recorrido.map { GeoPoint(it.lat, it.lng) })
+                if (ultimo.punto == null) {
+                    marcador.position = GeoPoint(u.lat, u.lng)
+                    pulso.punto = marcador.position
+                }
+                // Orden de abajo hacia arriba: línea, tu ubicación, pulso y camión
+                if (!vista.overlays.contains(linea)) vista.overlays.add(linea)
+                if (!vista.overlays.contains(yo)) vista.overlays.add(yo)
+                if (!vista.overlays.contains(pulso)) vista.overlays.add(pulso)
+                if (!vista.overlays.contains(marcador)) vista.overlays.add(marcador)
+            } else {
+                // Sin ubicación: no se dibuja ningún camión falso
+                vista.overlays.remove(marcador)
+                vista.overlays.remove(pulso)
+                vista.overlays.remove(linea)
+                pulso.punto = null
+            }
+            vista.invalidate()
+        }
+    )
 }
 
 // Crea el mapa centrado en Huauchinango
@@ -228,34 +237,96 @@ private fun crearMapa(contexto: Context): MapView {
         // Las condiciones de uso piden mostrar el crédito del mapa
         overlays.add(CopyrightOverlay(contexto))
         setMultiTouchControls(true) // zoom con dos dedos
+        // Versión 2.10: sin los botones + y - (quedaban detrás de la hoja); el zoom es con dos dedos
+        zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
         controller.setZoom(16.0)
         controller.setCenter(CENTRO_HUAUCHINANGO)
     }
 }
 
-// Achica camion.png (502 x 304 px) a 56 dp de ancho para usarlo como ícono del mapa
+// Versión 2.10 (FR-611): el marcador es el camión blanco dentro de un círculo verde con borde blanco
+// (antes era la foto camion.png). Se dibuja una sola vez en un Bitmap.
 private fun iconoCamion(contexto: Context): Drawable {
-    val original = BitmapFactory.decodeResource(contexto.resources, R.drawable.camion)
-    val ancho = (56 * contexto.resources.displayMetrics.density).toInt()
-    val alto = ancho * original.height / original.width
-    return BitmapDrawable(contexto.resources, Bitmap.createScaledBitmap(original, ancho, alto, true))
+    val densidad = contexto.resources.displayMetrics.density
+    val lado = (46 * densidad).toInt()
+    val mapa = Bitmap.createBitmap(lado, lado, Bitmap.Config.ARGB_8888)
+    val lienzo = android.graphics.Canvas(mapa)
+    val centro = lado / 2f
+    val pintura = Paint(Paint.ANTI_ALIAS_FLAG)
+    pintura.color = android.graphics.Color.WHITE
+    lienzo.drawCircle(centro, centro, centro, pintura)
+    pintura.color = android.graphics.Color.parseColor("#019B43")
+    lienzo.drawCircle(centro, centro, centro - 3 * densidad, pintura)
+    val camion = contexto.getDrawable(R.drawable.ic_camion_blanco)!!
+    val margen = (11 * densidad).toInt()
+    camion.setBounds(margen, margen, lado - margen, lado - margen)
+    camion.draw(lienzo)
+    return BitmapDrawable(contexto.resources, mapa)
 }
 
-// Texto y color que se muestran debajo del mapa (tabla de estados de data-model.md)
-private data class Estado(val texto: String, val color: Color)
+// FR-611 y FR-612: círculo que se dibuja sobre el mapa en un punto.
+// Sirve para el "pulso" verde del camión (crece y se desvanece) y para el punto azul de tu ubicación.
+private class CirculoEnMapa(
+    private val densidad: Float,
+    private val color: Int,
+    private val radioDp: Float,
+    private val conBorde: Boolean
+) : Overlay() {
+    var punto: GeoPoint? = null
+    var fase = 0f // 0 a 1: qué tanto ha crecido el pulso (solo si es pulso)
+    var esPulso = false
+    private val pintura = Paint(Paint.ANTI_ALIAS_FLAG)
 
-private fun calcularEstado(u: Ubicacion?, cargando: Boolean, ahora: Long): Estado {
-    if (cargando) return Estado("Buscando camión…", Color.Gray)
-    if (u == null) return Estado("Sin ubicación disponible", Color(0xFFB00020))
+    // osmdroid llama a uno u otro según la versión; los dos terminan en dibujar()
+    override fun draw(c: android.graphics.Canvas, vista: MapView, sombra: Boolean) {
+        if (!sombra) dibujar(c, vista.projection)
+    }
+
+    override fun draw(c: android.graphics.Canvas, proyeccion: Projection) {
+        dibujar(c, proyeccion)
+    }
+
+    private fun dibujar(c: android.graphics.Canvas, proyeccion: Projection) {
+        val p = punto ?: return
+        val px = proyeccion.toPixels(p, null)
+        val d = densidad
+        val x = px.x.toFloat()
+        val y = px.y.toFloat()
+        if (esPulso) {
+            pintura.color = color
+            pintura.alpha = ((1f - fase) * 120).toInt()
+            c.drawCircle(x, y, radioDp * d * (1f + fase * 1.4f), pintura)
+        } else {
+            // Halo claro, borde blanco y punto de color
+            pintura.color = color
+            pintura.alpha = 50
+            c.drawCircle(x, y, radioDp * d * 2.4f, pintura)
+            pintura.color = android.graphics.Color.WHITE
+            pintura.alpha = 255
+            if (conBorde) c.drawCircle(x, y, (radioDp + 3f) * d, pintura)
+            pintura.color = color
+            c.drawCircle(x, y, radioDp * d, pintura)
+        }
+    }
+}
+
+// Estado del camión (tabla de estados de data-model.md).
+// Versión 2.10 (FR-603): se muestra como etiqueta de color ("En ruta", "Simulación", "Sin señal")
+// y con un título grande en la hoja de Inicio.
+data class EstadoCamion(val etiqueta: String, val titulo: String, val hora: String?, val color: Color)
+
+fun calcularEstado(u: Ubicacion?, cargando: Boolean, ahora: Long): EstadoCamion {
+    if (cargando) return EstadoCamion("Buscando…", "Buscando camión…", null, Color.Gray)
+    if (u == null) return EstadoCamion("Sin ubicación", "Sin ubicación disponible", null, Color(0xFFB00020))
 
     val recibida = leerFecha(u.fecha)
     val hora = recibida?.let { SimpleDateFormat("HH:mm", Locale.getDefault()).format(it) } ?: "--:--"
     val antigua = recibida != null && ahora - recibida.time > SIN_SENAL_DESPUES_MS
 
     return when {
-        antigua -> Estado("Sin señal reciente · $hora", Color(0xFFE65100))
-        u.fuente == "gps" -> Estado("Ubicación real · $hora", VerdeTruck)
-        else -> Estado("Simulación · $hora", Color(0xFF1565C0))
+        antigua -> EstadoCamion("Sin señal", "Sin señal reciente", hora, Color(0xFFE65100))
+        u.fuente == "gps" -> EstadoCamion("En ruta", "El camión va en ruta", hora, VerdeTruck)
+        else -> EstadoCamion("Simulación", "Simulación en curso", hora, Color(0xFF1565C0))
     }
 }
 

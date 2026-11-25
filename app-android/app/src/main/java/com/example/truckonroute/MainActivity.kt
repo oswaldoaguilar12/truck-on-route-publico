@@ -50,8 +50,18 @@ import com.example.truckonroute.ui.ChoferScreen
 import com.example.truckonroute.ui.DegradadoVerde
 import com.example.truckonroute.ui.FondoDecorado
 import com.example.truckonroute.ui.TarjetaTor
+import com.example.truckonroute.ui.TipografiaTor
+import com.example.truckonroute.ui.PantallaVerdeConHoja
+import com.example.truckonroute.ui.BotonPildora
+import com.example.truckonroute.ui.FondoTor
+import com.example.truckonroute.ui.TextoOscuroTor
+import com.example.truckonroute.ui.TextoGrisTor
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.ui.draw.shadow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import com.example.truckonroute.ui.PantallaInicio
+import com.example.truckonroute.ui.PantallaEntrando
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,6 +87,7 @@ fun TruckOnRouteTheme(content: @Composable () -> Unit) {
             primary = GreenMain,
             background = BackgroundColor
         ),
+        typography = TipografiaTor, // versión 2.10 (spec 006): fuente Poppins en toda la app
         content = content
     )
 }
@@ -90,6 +101,19 @@ fun MainNavigation() {
     val alcance = rememberCoroutineScope()
     var usuario by remember { mutableStateOf(Sesion.usuario(contexto)) }
     var showRegister by remember { mutableStateOf(false) }
+    // Versión 2.10 (spec 006, FR-609): logo al abrir la app y camioncito animado al iniciar sesión
+    var mostrarInicio by remember { mutableStateOf(true) }
+    var entrando by remember { mutableStateOf<Usuario?>(null) }
+    LaunchedEffect(Unit) {
+        delay(1600)
+        mostrarInicio = false
+    }
+    LaunchedEffect(entrando) {
+        val nuevo = entrando ?: return@LaunchedEffect
+        delay(2400) // lo que dura la animación del camión
+        usuario = nuevo
+        entrando = null
+    }
 
     // Android 13+: pide permiso para mostrar notificaciones (avisos del camión)
     val pedirNotificaciones = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -110,7 +134,15 @@ fun MainNavigation() {
     }
 
     val u = usuario
-    if (u != null) {
+    val e = entrando
+    if (mostrarInicio) {
+        PantallaInicio()
+    } else if (e != null) {
+        PantallaEntrando(
+            nombre = e.nombre.substringBefore(" "),
+            mensaje = if (e.esChofer) "Cargando tu recorrido…" else "Preparando tu mapa…"
+        )
+    } else if (u != null) {
         if (u.esChofer) ChoferScreen(usuario = u, onLogout = cerrarSesion)
         else HomeScreen(usuario = u, onLogout = cerrarSesion)
     } else {
@@ -121,7 +153,7 @@ fun MainNavigation() {
                 onRegisterClick = { showRegister = true },
                 onLoginSuccess = { token, nuevo ->
                     Sesion.guardar(contexto, token, nuevo)
-                    usuario = nuevo
+                    entrando = nuevo // primero la animación; después entra a su pantalla
                 }
             )
         }
@@ -143,42 +175,18 @@ fun LoginScreen(onRegisterClick: () -> Unit, onLoginSuccess: (String, Usuario) -
     var entrando by remember { mutableStateOf(false) }
     var errorServidor by remember { mutableStateOf<String?>(null) }
 
-    // Versión 2.9: fondo con círculos verdes suaves y el formulario dentro de una tarjeta con sombra
-    FondoDecorado(BackgroundColor) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()) // en pantallas chicas el teclado no tapa el botón
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Logo: el mismo ícono de camión, ahora en un círculo con el degradado verde y sombra
-        Box(
-            modifier = Modifier
-                .size(104.dp)
-                .shadow(14.dp, CircleShape, ambientColor = GreenDark.copy(alpha = 0.4f), spotColor = GreenDark.copy(alpha = 0.4f))
-                .background(DegradadoVerde, CircleShape)
-                .border(4.dp, Color.White, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.LocalShipping, null, tint = Color.White, modifier = Modifier.size(56.dp))
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("TRUCK\nON ROUTE", color = GreenMain, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, lineHeight = 32.sp, letterSpacing = 2.sp)
-        Spacer(modifier = Modifier.height(24.dp))
-
-        TarjetaTor {
-        Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Bienvenido", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Text("Consulta dónde va el camión de la basura", fontSize = 14.sp, color = Color.Gray, textAlign = TextAlign.Center)
+    // Versión 2.10 (spec 006): fondo verde con círculos, título grande y una hoja blanca que sube.
+    // La validación y la consulta a la API son las mismas de la v2.8.
+    PantallaVerdeConHoja(titulo = "Sabe cuándo pasa\nel camión", subtitulo = "Truck on Route · Huauchinango") {
+        Text("Hola de nuevo", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextoOscuroTor)
+        Text("Entra para ver dónde va el camión de la basura", fontSize = 14.sp, color = TextoGrisTor)
         Spacer(modifier = Modifier.height(22.dp))
 
+        EtiquetaCampo("Correo")
         OutlinedTextField(
             value = correo, onValueChange = { correo = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Correo Electrónico") },
+            placeholder = { Text("nombre@gmail.com") },
             leadingIcon = { Icon(Icons.Outlined.Email, null) },
             singleLine = true,
             isError = intento && !correoValido,
@@ -187,13 +195,14 @@ fun LoginScreen(onRegisterClick: () -> Unit, onLoginSuccess: (String, Usuario) -
             } else null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
             shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenMain, focusedLeadingIconColor = GreenMain)
+            colors = coloresCampo()
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+        EtiquetaCampo("Contraseña")
         OutlinedTextField(
             value = contrasena, onValueChange = { contrasena = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Contraseña") },
+            placeholder = { Text("Tu contraseña") },
             leadingIcon = { Icon(Icons.Outlined.Lock, null) },
             // Ojo para mostrar u ocultar la contraseña
             trailingIcon = {
@@ -212,10 +221,14 @@ fun LoginScreen(onRegisterClick: () -> Unit, onLoginSuccess: (String, Usuario) -
             visualTransformation = if (verContrasena) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
             shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenMain, focusedLeadingIconColor = GreenMain)
+            colors = coloresCampo()
         )
-        Spacer(modifier = Modifier.height(26.dp))
-        Button(
+        Spacer(modifier = Modifier.height(22.dp))
+        BotonPildora(
+            texto = "Entrar",
+            icono = Icons.AutoMirrored.Filled.ArrowForward,
+            habilitado = !entrando,
+            cargando = entrando,
             onClick = {
                 intento = true
                 errorServidor = null
@@ -229,38 +242,40 @@ fun LoginScreen(onRegisterClick: () -> Unit, onLoginSuccess: (String, Usuario) -
                         else errorServidor = error
                     }
                 }
-            },
-            enabled = !entrando,
-            modifier = Modifier.fillMaxWidth().height(55.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = GreenMain),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp, pressedElevation = 2.dp)
-        ) {
-            if (entrando) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 3.dp)
-            else Text("Iniciar sesión", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
+            }
+        )
         // "Correo o contraseña incorrectos" o "No se pudo conectar con el servidor"
         errorServidor?.let {
             Spacer(modifier = Modifier.height(10.dp))
-            Text(it, color = Color(0xFFB00020), textAlign = TextAlign.Center)
+            Text(it, color = Color(0xFFB00020), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text("¿No tienes cuenta?", color = Color.Gray)
-        Spacer(modifier = Modifier.height(10.dp))
-        OutlinedButton(
-            onClick = onRegisterClick,
-            modifier = Modifier.fillMaxWidth().height(55.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(2.dp, GreenMain)
-        ) {
-            Text("Registrarse", color = GreenMain, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            Text("¿No tienes cuenta?", color = TextoGrisTor, fontSize = 14.sp)
+            TextButton(onClick = onRegisterClick) {
+                Text("Regístrate", color = GreenDark, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
-        } // fin de la columna de la tarjeta
-        } // fin de TarjetaTor
-        Spacer(modifier = Modifier.height(24.dp))
     }
-    } // fin de FondoDecorado
 }
+
+// Versión 2.10: texto pequeño arriba de cada campo
+@Composable
+fun EtiquetaCampo(texto: String) {
+    Text(texto, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF445248), modifier = Modifier.padding(bottom = 6.dp))
+}
+
+// Versión 2.10: campos con fondo claro y borde verde al escribir
+@Composable
+fun coloresCampo() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = FondoTor,
+    unfocusedContainerColor = FondoTor,
+    errorContainerColor = FondoTor,
+    focusedBorderColor = GreenMain,
+    unfocusedBorderColor = Color.Transparent,
+    focusedLeadingIconColor = GreenMain,
+    unfocusedLeadingIconColor = GreenDark
+)
 
 // --- PANTALLA DE REGISTRO ---
 @Composable

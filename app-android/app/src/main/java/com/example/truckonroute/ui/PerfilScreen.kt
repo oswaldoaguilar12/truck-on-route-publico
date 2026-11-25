@@ -27,7 +27,7 @@ import com.example.truckonroute.data.Usuario
 import coil.compose.AsyncImage // Si no tienes Coil, te daré una alternativa abajo
 
 @Composable
-fun PerfilScreen(usuario: Usuario) {
+fun PerfilScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
     // 1. Estados para los datos
     // T510 (FR-507): se llenan con la cuenta que inició sesión, ya no con datos fijos.
     // Editar solo cambia lo que se ve en pantalla; guardarlo en la API queda para v3.0.
@@ -52,168 +52,158 @@ fun PerfilScreen(usuario: Usuario) {
         imageUri = uri // Guardamos la imagen seleccionada
     }
 
+    // Versión 2.10 (spec 006): encabezado verde, tarjeta encimada con el avatar y chip del rol,
+    // y una lista con los datos. Editar sigue cambiando solo lo que se ve (guardar en la API es v3.0).
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFEFEFEF))
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(FondoTor)
+            .verticalScroll(rememberScrollState())
     ) {
-        Spacer(modifier = Modifier.height(30.dp))
+        EncabezadoVerde {
+            Text(
+                "Mi perfil", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 22.dp, top = 22.dp, bottom = 120.dp)
+            )
+        }
 
-        // --- FOTO DE PERFIL ---
-        // Versión 2.9: la foto "flota" con una sombra verde suave
-        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.shadow(12.dp, CircleShape, ambientColor = Color(0xFF0A7D2C).copy(alpha = 0.4f), spotColor = Color(0xFF0A7D2C).copy(alpha = 0.4f))) {
-            if (imageUri != null) {
-                // Si seleccionó una foto, la mostramos
-                AsyncImage(
-                    model = imageUri,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .border(3.dp, Color(0xFF0A7D2C), CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                // Foto por defecto
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .border(3.dp, Color(0xFF0A7D2C), CircleShape)
-                        .background(Color.White),
-                    tint = Color.Gray
-                )
-            }
+        // --- TARJETA CON LA FOTO, EL NOMBRE Y EL ROL ---
+        Column(
+            Modifier.fillMaxWidth().offset(y = (-70).dp).padding(horizontal = 16.dp).entradaSuave(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                TarjetaTor(Modifier.padding(top = 48.dp)) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 58.dp, bottom = 22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (isEditing) {
+                            OutlinedTextField(
+                                value = nombre,
+                                onValueChange = { nombre = it },
+                                label = { Text("Nombre") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                        } else {
+                            Text(nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextoOscuroTor)
+                            Text(correo, fontSize = 14.sp, color = TextoGrisTor)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        EtiquetaEstado(rol, VerdeOscuroTor, conPunto = false)
+                    }
+                }
 
-            // BOTÓN PARA CAMBIAR FOTO (Solo aparece si estamos editando)
-            if (isEditing) {
-                IconButton(
-                    onClick = { launcher.launch("image/*") }, // Abre la galería
-                    modifier = Modifier
-                        .size(35.dp)
-                        .background(Color(0xFF0A7D2C), CircleShape)
-                        .border(2.dp, Color.White, CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
+                // --- FOTO DE PERFIL: la inicial del nombre o la foto elegida ---
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    val forma = CircleShape
+                    Box(
+                        Modifier.size(96.dp)
+                            .shadow(12.dp, forma, ambientColor = VerdeOscuroTor.copy(alpha = 0.4f), spotColor = VerdeOscuroTor.copy(alpha = 0.4f))
+                            .background(Color.White, forma)
+                            .padding(4.dp) // borde blanco de 4 dp
+                            .clip(forma)
+                            .background(VerdeClaroTor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (imageUri != null) {
+                            AsyncImage(
+                                model = imageUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(nombre.take(1).uppercase().ifBlank { "?" }, color = VerdeOscuroTor, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // BOTÓN PARA CAMBIAR FOTO (Solo aparece si estamos editando)
+                    if (isEditing) {
+                        IconButton(
+                            onClick = { launcher.launch("image/*") }, // Abre la galería
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(VerdeOscuroTor, CircleShape)
+                                .border(2.dp, Color.White, CircleShape)
+                        ) {
+                            Icon(Icons.Default.CameraAlt, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(15.dp))
-
-        if (isEditing) {
-            OutlinedTextField(
-                value = nombre,
-                onValueChange = { nombre = it },
-                label = { Text("Nombre") },
-                modifier = Modifier.fillMaxWidth(0.8f),
-                singleLine = true
-            )
-        } else {
-            Text(nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0A7D2C))
-            Text(correo, fontSize = 14.sp, color = Color.Gray)
-        }
-
-        Spacer(modifier = Modifier.height(25.dp))
-
-        // --- CONTENEDOR VERDE ---
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                // Versión 2.9: sombra, esquinas de 24 dp y el degradado de los dos verdes de la app
-                .shadow(14.dp, RoundedCornerShape(24.dp), ambientColor = Color(0xFF0A7D2C).copy(alpha = 0.35f), spotColor = Color(0xFF0A7D2C).copy(alpha = 0.35f))
-                .background(DegradadoVerde, RoundedCornerShape(24.dp))
-                .padding(20.dp)
-        ) {
-            Text(
-                text = if (isEditing) "Editando Información" else "Información personal",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-
-            Spacer(modifier = Modifier.height(15.dp))
-
-            if (isEditing) {
-                EditField("Correo", correo, Icons.Default.Email) { correo = it }
-                EditField("Teléfono", telefono, Icons.Default.Phone) { telefono = it }
-                EditField("Colonia", direccion, Icons.Default.LocationOn) { direccion = it }
-            } else {
-                ItemPerfil("Teléfono", telefono, Icons.Default.Phone)
-                ItemPerfil("Colonia", direccion, Icons.Default.LocationOn)
-                ItemPerfil("Rol", rol, Icons.Default.Person)
+            // --- DATOS ---
+            TarjetaTor {
+                Column(Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) {
+                    if (isEditing) {
+                        Spacer(Modifier.height(10.dp))
+                        EditField("Correo", correo, Icons.Default.Email) { correo = it }
+                        EditField("Teléfono", telefono, Icons.Default.Phone) { telefono = it }
+                        EditField("Colonia", direccion, Icons.Default.LocationOn) { direccion = it }
+                    } else {
+                        ItemPerfil("Colonia", direccion, Icons.Default.LocationOn)
+                        HorizontalDivider(color = Color(0xFFEEF0EE))
+                        ItemPerfil("Teléfono", telefono, Icons.Default.Phone)
+                        HorizontalDivider(color = Color(0xFFEEF0EE))
+                        ItemPerfil("Rol", rol, Icons.Default.Person)
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(25.dp))
-
-            Button(
-                onClick = { isEditing = !isEditing },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isEditing) Color(0xFF7ED957) else Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp)
-            ) {
-                Icon(
-                    imageVector = if (isEditing) Icons.Default.Check else Icons.Default.Edit,
-                    contentDescription = null,
-                    tint = Color(0xFF0A7D2C)
-                )
+            // --- BOTONES ---
+            BotonBorde(
+                texto = if (isEditing) "Guardar cambios" else "Editar perfil",
+                icono = if (isEditing) Icons.Default.Check else Icons.Default.Edit,
+                onClick = { isEditing = !isEditing }
+            )
+            TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Icon(Icons.Default.Logout, null, tint = RojoTor, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = if (isEditing) "Guardar Cambios" else "Editar Perfil",
-                    color = Color(0xFF0A7D2C),
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Cerrar sesión", color = RojoTor, fontWeight = FontWeight.Medium, fontSize = 15.sp)
             }
         }
-        Spacer(modifier = Modifier.height(30.dp))
     }
 }
 
+// Versión 2.10: campos claros (antes eran blancos sobre el fondo verde)
 @Composable
 fun EditField(label: String, value: String, icono: ImageVector, onValueChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = Color.White) },
-        leadingIcon = { Icon(icono, null, tint = Color.White) },
+        label = { Text(label) },
+        leadingIcon = { Icon(icono, null, tint = VerdeOscuroTor) },
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            focusedBorderColor = Color.White,
-            unfocusedBorderColor = Color.White.copy(alpha = 0.5f)
+            focusedContainerColor = FondoTor,
+            unfocusedContainerColor = FondoTor,
+            focusedBorderColor = VerdeTor,
+            unfocusedBorderColor = Color.Transparent,
+            focusedLabelColor = VerdeOscuroTor
         ),
         singleLine = true
     )
     Spacer(Modifier.height(10.dp))
 }
 
+// Versión 2.10: fila con el ícono en un cuadrito verde claro, el título gris y el dato
 @Composable
 fun ItemPerfil(titulo: String, contenido: String, icono: ImageVector) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Versión 2.9: el ícono va en un círculo blanco transparente
-        Box(Modifier.size(40.dp).background(Color.White.copy(alpha = 0.16f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icono, null, tint = Color.White, modifier = Modifier.size(22.dp))
+        Box(Modifier.size(40.dp).background(VerdeClaroTor, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+            Icon(icono, null, tint = VerdeOscuroTor, modifier = Modifier.size(20.dp))
         }
-        Spacer(modifier = Modifier.width(15.dp))
+        Spacer(modifier = Modifier.width(14.dp))
         Column {
-            Text(titulo, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-            Text(contenido, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            Text(titulo, color = TextoGrisTor, fontSize = 12.sp)
+            Text(contenido, color = TextoOscuroTor, fontSize = 15.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
