@@ -145,7 +145,7 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                 }
             ) { padding ->
                 Box(modifier = Modifier.padding(padding)) {
-                    if (selectedTab == 0) MainContent(usuario) else PerfilScreen()
+                    if (selectedTab == 0) MainContent(usuario) else PerfilScreen(usuario)
                 }
             }
         }

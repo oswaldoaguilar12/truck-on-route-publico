@@ -18,12 +18,14 @@
 - **FR-504**: El login y el registro DEBEN tener un fondo con círculos verdes muy transparentes y el logo en un círculo con degradado y sombra; el formulario del login va dentro de una tarjeta.
 - **FR-505**: Los encabezados verdes DEBEN tener sombra, esquinas de 28 dp y burbujas blancas transparentes.
 - **FR-506**: Ningún cambio DEBE alterar el comportamiento de la v2.8 (login, roles, avisos, cercanía, mapa).
+- **FR-507** (agregado el 2026-11-24, aprobado por el equipo): El Perfil DEBE mostrar el nombre, correo, teléfono, colonia y rol de la cuenta que inició sesión, no datos fijos. Se encontró en la prueba T509: a un ciudadano le salía "Rol: Administrador". Editar el perfil sigue siendo solo en pantalla (no se guarda en la API).
 
 ## Fuera de alcance
 - Cambiar la paleta de colores, tipografías nuevas, modo oscuro, animaciones nuevas.
 - El panel web del administrador (solo la app Android).
-- Los datos de ejemplo del Perfil (ya resuelto aparte en T034).
+- Guardar en la API los cambios hechos en "Editar perfil" (queda para v3.0).
 
 ## Criterios de éxito
 - **SC-501**: El proyecto compila en Android Studio sin errores.
 - **SC-502**: El equipo confirma en el emulador que la app "ya no se ve plana" y que todo sigue funcionando.
+- **SC-503**: Al entrar como ciudadano o como administrador, el Perfil muestra los datos y el rol de esa cuenta.

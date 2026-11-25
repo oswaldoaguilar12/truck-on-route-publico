@@ -23,16 +23,23 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.truckonroute.data.Usuario
 import coil.compose.AsyncImage // Si no tienes Coil, te daré una alternativa abajo
 
 @Composable
-fun PerfilScreen() {
+fun PerfilScreen(usuario: Usuario) {
     // 1. Estados para los datos
-    // T034: datos ficticios de ejemplo (antes eran datos reales de una integrante del equipo)
-    var nombre by remember { mutableStateOf("Ana López") }
-    var correo by remember { mutableStateOf("ana.lopez@ejemplo.com") }
-    var telefono by remember { mutableStateOf("7760000000") }
-    var direccion by remember { mutableStateOf("Calle Ejemplo #10, Centro") }
+    // T510 (FR-507): se llenan con la cuenta que inició sesión, ya no con datos fijos.
+    // Editar solo cambia lo que se ve en pantalla; guardarlo en la API queda para v3.0.
+    var nombre by remember(usuario) { mutableStateOf(usuario.nombre) }
+    var correo by remember(usuario) { mutableStateOf(usuario.correo) }
+    var telefono by remember(usuario) { mutableStateOf(usuario.telefono.ifBlank { "Sin teléfono" }) }
+    var direccion by remember(usuario) { mutableStateOf(usuario.colonia.ifBlank { "Sin colonia" }) }
+    val rol = when (usuario.rol) {
+        "administrador" -> "Administrador"
+        "conductor" -> "Chofer"
+        else -> "Ciudadano"
+    }
     var isEditing by remember { mutableStateOf(false) }
 
     // 2. ESTADO PARA LA FOTO (Guarda la dirección de la imagen)
@@ -139,11 +146,11 @@ fun PerfilScreen() {
             if (isEditing) {
                 EditField("Correo", correo, Icons.Default.Email) { correo = it }
                 EditField("Teléfono", telefono, Icons.Default.Phone) { telefono = it }
-                EditField("Dirección", direccion, Icons.Default.LocationOn) { direccion = it }
+                EditField("Colonia", direccion, Icons.Default.LocationOn) { direccion = it }
             } else {
                 ItemPerfil("Teléfono", telefono, Icons.Default.Phone)
-                ItemPerfil("Dirección", direccion, Icons.Default.LocationOn)
-                ItemPerfil("Rol", "Administrador", Icons.Default.Person)
+                ItemPerfil("Colonia", direccion, Icons.Default.LocationOn)
+                ItemPerfil("Rol", rol, Icons.Default.Person)
             }
 
             Spacer(modifier = Modifier.height(25.dp))
