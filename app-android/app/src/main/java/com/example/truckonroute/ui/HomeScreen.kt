@@ -55,6 +55,7 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
 
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Inicio, 1: Perfil
     var showHelpDialog by remember { mutableStateOf(false) } // Diálogo Ayuda
+    var verAmbiente by remember { mutableStateOf(false) } // v2.11 (spec 007): sección "Cuida tu ambiente"
 
     // Versión 2.8: se retiró la clave fija "admin123"; el administrador usa el panel web con su cuenta
 
@@ -93,14 +94,33 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                 // Opción: Inicio
                 NavigationDrawerItem(
                     label = { Text("Inicio") },
-                    selected = selectedTab == 0,
+                    selected = selectedTab == 0 && !verAmbiente,
                     onClick = {
                         selectedTab = 0
+                        verAmbiente = false
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Home, null) },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     // v2.10: la opción elegida en verde claro (antes salía el morado que trae Material)
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = GreenMain.copy(alpha = 0.14f),
+                        selectedIconColor = GreenDark,
+                        selectedTextColor = GreenDark,
+                        unselectedIconColor = TextoGrisTor
+                    )
+                )
+
+                // Versión 2.11 (FR-701): sección "Cuida tu ambiente" con el memorama de residuos
+                NavigationDrawerItem(
+                    label = { Text("Cuida tu ambiente") },
+                    selected = verAmbiente,
+                    onClick = {
+                        verAmbiente = true
+                        scope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Eco, null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     colors = NavigationDrawerItemDefaults.colors(
                         selectedContainerColor = GreenMain.copy(alpha = 0.14f),
                         selectedIconColor = GreenDark,
@@ -152,7 +172,8 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
         }
     ) {
         // --- CONTENIDO ---
-        run {
+        // v2.11: mientras "Cuida tu ambiente" está abierta, ocupa toda la pantalla
+        if (verAmbiente) CuidaAmbienteScreen(onSalir = { verAmbiente = false }) else run {
             // Versión 2.10 (spec 006): sin encabezado; en Inicio el mapa llega hasta arriba
             // (contentWindowInsets = 0: cada pantalla deja su propio espacio para la barra de estado)
             Scaffold(

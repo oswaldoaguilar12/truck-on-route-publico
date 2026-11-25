@@ -1,11 +1,11 @@
 <!--
 Informe de sincronización (Sync Impact Report)
-- Versión: 3.0.0 → 4.0.0 (MAJOR: se redefine el principio III)
+- Versión: 4.0.0 → 4.1.0 (MINOR: se agrega al alcance un minijuego educativo)
 - Principio modificado:
-  - III. Partir de lo que existe → los colores y el logo se conservan, pero ya se puede cambiar el acomodo de las pantallas, la tipografía (Poppins incluida en la app) y agregar animaciones cortas (spec 006)
-- Principios sin cambio: I, II, IV y V
-- Specs revisadas: specs/006-rediseno-visual (nueva)
-- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0, v2.0.0, v2.1.0 y v3.0.0)
+  - I. Alcance por fases → se agrega la Fase 4 (spec 007): memorama de residuos dentro de la app, sin internet y sin tocar la API
+- Principios sin cambio: II, III, IV y V (los colores de las 4 categorías se aclaran dentro de la Fase 4 y solo aplican al juego)
+- Specs revisadas: specs/007-memorama-residuos (nueva)
+- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0, v2.0.0, v2.1.0, v3.0.0 y v4.0.0)
 -->
 
 # Truck on Rute Constitution
@@ -19,6 +19,8 @@ Informe de sincronización (Sync Impact Report)
 **Fase 2 (spec 002):** sobre lo anterior se permite historial de ubicaciones, velocidad y distancia calculadas, panel web del administrador (solo lectura) y guardado opcional en MySQL.
 
 **Fase 3 (spec 004):** cuentas con rol (ciudadano, conductor y administrador) e inicio de sesión real contra la API; el administrador da de alta camiones, choferes y rutas, asigna recorridos y manda indicaciones al chofer desde el panel web; el chofer ve su recorrido e inicia o termina la ruta desde la app; el ciudadano recibe el aviso "el camión ya está en ruta" y, si lo activa, un aviso cuando el camión está a menos de 500 m de su celular.
+
+**Fase 4 (spec 007):** un minijuego educativo tipo memorama dentro de la app Android, para que el ciudadano aprenda a separar sus residuos (orgánicos, inorgánicos reciclables, inorgánicos no reciclables y de manejo especial). Funciona sin internet, no usa la API y no guarda nada en el servidor. Los colores de las 4 categorías (verde, gris, naranja y café, como en la norma de separación de residuos) se usan solo dentro del juego.
 
 Siguen fuera de alcance: carrito con motores, panel solar, MPU6050, AHT20-BMP280, tiempo estimado de llegada (ETA), colores de la ruta según dónde ya pasó el camión (pendiente, se hará en otra spec), notificaciones push con Firebase, varios camiones a la vez en el mapa del ciudadano y nube. Agregar cualquiera de estos requiere una nueva enmienda y preguntar al equipo antes de escribir código.
 
@@ -65,5 +67,6 @@ La validación y las rutas de la API tienen tests con `node --test`. Cada etapa 
 | 2.1.0 | 2026-11-02 | MINOR | Al probar la app, el equipo vio que el login aceptaba textos como `hola.com` (sin `@`). Se permite validar el formato del correo en login y registro (spec 003). La enmienda se hizo antes de escribir el código. |
 | 3.0.0 | 2026-11-11 | MAJOR | El equipo pidió que el sistema funcione completo para administrador, chofer y ciudadano: login real con rol, alta de camiones y choferes, recorridos, indicaciones al chofer y avisos de "camión en ruta" y "camión cerca". Se redefinen los principios I y III, y se agregan reglas de guardado (II) y de contraseñas y sesiones (IV). La enmienda se hizo antes de escribir el código (spec 004). |
 | 4.0.0 | 2026-11-25 | MAJOR | El equipo, al recorrer la v2.9 el 2026-11-24, dijo que la app "se ve muy acartonada y aburrida" y pidió un diseño más llamativo. Aprobó la maqueta del rediseño (Login, Inicio, Chofer y Perfil) y pidió mantener los verdes. Se redefine el principio III: se conservan colores y logo, y se permite cambiar acomodo, tipografía y animaciones (spec 006). La enmienda se hizo antes de escribir el código. |
+| 4.1.0 | 2026-11-25 | MINOR | El equipo pidió el 2026-11-25 "un mini juego tipo memorama para los usuarios" que enseñe los tipos de residuos y su clasificación. Se agrega la Fase 4 al principio I (spec 007). No cambia la API ni el panel web. La enmienda se hizo antes de escribir el código. |
 
-**Version**: 4.0.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-25
+**Version**: 4.1.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-25

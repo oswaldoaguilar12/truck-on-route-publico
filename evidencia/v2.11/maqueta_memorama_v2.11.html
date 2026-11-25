@@ -1,0 +1,114 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#E3E8E5;font-family:Poppins,sans-serif;color:#1C2B22;padding:30px;display:flex;gap:34px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.cap{font-weight:600;font-size:17px;color:#0A7D2C}
+.tel{width:390px;height:844px;border-radius:44px;overflow:hidden;background:#F5F7F6;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.18);border:8px solid #1C2B22;display:flex;flex-direction:column}
+.enc{background:#0A7D2C;position:relative;overflow:hidden;padding:22px 20px 60px;color:#fff;flex-shrink:0}
+.enc .c1{position:absolute;width:240px;height:240px;border-radius:50%;background:#019B43;top:-120px;right:-80px}
+.enc .c2{position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08);bottom:-60px;left:-30px}
+.barra{display:flex;justify-content:space-between;font-size:12px;opacity:.95;position:relative;margin-bottom:14px}
+.fila{display:flex;align-items:center;gap:12px;position:relative}
+.btnr{width:40px;height:40px;border-radius:20px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center}
+h1{margin:0;font-size:22px;font-weight:700}
+.sub{color:#D8F2E2;font-size:13px}
+.tarjeta{margin:-44px 16px 0;background:#fff;border-radius:26px;box-shadow:0 12px 30px rgba(28,43,34,.12);padding:18px;position:relative}
+.pill{height:58px;border-radius:29px;background:#019B43;color:#fff;font-weight:600;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 12px 26px rgba(1,155,67,.4)}
+.borde{height:52px;border-radius:26px;border:2px solid #019B43;color:#0A7D2C;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;background:#fff}
+.cat{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #EEF0EE}
+.cat:last-child{border:none}
+.dot{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.stats{display:flex;gap:8px;position:relative;margin-top:14px}
+.stat{flex:1;background:rgba(255,255,255,.14);border-radius:14px;padding:8px 10px}
+.stat b{display:block;font-size:18px}.stat span{font-size:11px;color:#D8F2E2}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 16px;margin-top:-36px;position:relative}
+.carta{height:118px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:500;text-align:center}
+.atras{background:linear-gradient(135deg,#019B43,#0A7D2C);box-shadow:0 6px 14px rgba(10,125,44,.25)}
+.atras i{width:44px;height:44px;border-radius:50%;border:3px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:22px;font-weight:700}
+.frente{background:#fff;box-shadow:0 6px 14px rgba(28,43,34,.08);border:3px solid #fff}
+.frente .e{font-size:40px;line-height:1}
+.ok{opacity:.92}
+.consejo{position:absolute;left:12px;right:12px;bottom:12px;background:#fff;border-radius:28px;box-shadow:0 -6px 40px rgba(0,0,0,.22);padding:20px}
+.velo{position:absolute;inset:0;background:rgba(28,43,34,.35)}
+.chip{display:inline-block;padding:5px 14px;border-radius:14px;font-size:13px;font-weight:600;color:#fff}
+.estrellas{font-size:46px;letter-spacing:6px;text-align:center;color:#F5B700}
+.grupo{display:flex;align-items:center;gap:10px;padding:8px 0}
+.mini{font-size:26px}
+</style></head><body>
+
+<!-- 1. Inicio del juego -->
+<div class="col"><div class="cap">1. Inicio del juego</div><div class="tel">
+<div class="enc"><div class="c1"></div><div class="c2"></div>
+<div class="barra"><span>9:41</span><span>▮▮▮ 85%</span></div>
+<div class="fila"><div class="btnr"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></div>
+<div><div class="sub">Aprende jugando</div><h1>¿Dónde va?</h1></div></div>
+</div>
+<div class="tarjeta">
+<div style="font-size:15px;font-weight:600;margin-bottom:4px">Encuentra los pares</div>
+<div style="font-size:13px;color:#5E6B63;margin-bottom:8px">Voltea dos cartas. Si son iguales, te decimos en qué bote va ese residuo.</div>
+<div class="cat"><div class="dot" style="background:#E3F4E8">🍌</div><div style="flex:1"><div style="font-weight:600;font-size:15px">Orgánicos</div><div style="font-size:12px;color:#5E6B63">Restos de comida, cáscaras, hojas</div></div><span style="width:14px;height:14px;border-radius:7px;background:#2E9E4F"></span></div>
+<div class="cat"><div class="dot" style="background:#ECEFEE">🥤</div><div style="flex:1"><div style="font-weight:600;font-size:15px">Reciclables</div><div style="font-size:12px;color:#5E6B63">PET, latas, cartón, vidrio</div></div><span style="width:14px;height:14px;border-radius:7px;background:#7A8580"></span></div>
+<div class="cat"><div class="dot" style="background:#FDEBDD">🧻</div><div style="flex:1"><div style="font-weight:600;font-size:15px">No reciclables</div><div style="font-size:12px;color:#5E6B63">Pañales, unicel, servilletas</div></div><span style="width:14px;height:14px;border-radius:7px;background:#E8731A"></span></div>
+<div class="cat"><div class="dot" style="background:#F1E6DD">🔋</div><div style="flex:1"><div style="font-weight:600;font-size:15px">Manejo especial</div><div style="font-size:12px;color:#5E6B63">Pilas, celulares, aceite, medicinas</div></div><span style="width:14px;height:14px;border-radius:7px;background:#8B5A3C"></span></div>
+</div>
+<div style="flex:1"></div>
+<div style="padding:0 16px 30px"><div class="pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>Jugar</div></div>
+</div></div>
+
+<!-- 2. Tablero con un par encontrado -->
+<div class="col"><div class="cap">2. Tablero (encontraste un par)</div><div class="tel">
+<div class="enc" style="padding-bottom:56px"><div class="c1"></div>
+<div class="barra"><span>9:42</span><span>▮▮▮ 85%</span></div>
+<div class="fila"><div class="btnr"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></div><h1 style="font-size:20px">¿Dónde va?</h1></div>
+<div class="stats"><div class="stat"><span>Pares</span><b>3 de 6</b></div><div class="stat"><span>Intentos</span><b>7</b></div><div class="stat"><span>Tiempo</span><b>0:48</b></div></div>
+</div>
+<div class="grid">
+<div class="carta frente ok" style="border-color:#2E9E4F"><span class="e">🍌</span>Cáscara de plátano</div>
+<div class="carta atras"><i>?</i></div>
+<div class="carta frente ok" style="border-color:#7A8580"><span class="e">🥫</span>Lata</div>
+<div class="carta atras"><i>?</i></div>
+<div class="carta frente" style="border-color:#8B5A3C"><span class="e">🔋</span>Pila</div>
+<div class="carta frente ok" style="border-color:#2E9E4F"><span class="e">🍌</span>Cáscara de plátano</div>
+<div class="carta atras"><i>?</i></div>
+<div class="carta frente ok" style="border-color:#7A8580"><span class="e">🥫</span>Lata</div>
+<div class="carta atras"><i>?</i></div>
+<div class="carta atras"><i>?</i></div>
+<div class="carta frente" style="border-color:#8B5A3C"><span class="e">🔋</span>Pila</div>
+<div class="carta atras"><i>?</i></div>
+</div>
+<div class="velo"></div>
+<div class="consejo">
+<div style="display:flex;align-items:center;gap:14px"><div class="dot" style="width:60px;height:60px;font-size:34px;background:#F1E6DD;border-radius:18px">🔋</div>
+<div><div style="font-size:13px;color:#5E6B63">¡Par encontrado!</div><div style="font-size:20px;font-weight:700">Pila</div></div></div>
+<div style="margin:14px 0 8px"><span class="chip" style="background:#8B5A3C">Manejo especial</span></div>
+<div style="font-size:14px;color:#3D4A42;line-height:1.5">Las pilas contaminan el agua y la tierra. Nunca las tires a la basura: júntalas en un frasco y llévalas a un punto de acopio.</div>
+<div class="pill" style="height:52px;margin-top:16px;font-size:16px">Seguir jugando</div>
+</div>
+</div></div>
+
+<!-- 3. Resumen -->
+<div class="col"><div class="cap">3. Resumen al terminar</div><div class="tel">
+<div class="enc" style="padding-bottom:70px;text-align:center"><div class="c1"></div><div class="c2"></div>
+<div class="barra"><span>9:43</span><span>▮▮▮ 84%</span></div>
+<div style="position:relative;font-size:46px">🎉</div>
+<h1 style="position:relative;font-size:26px">¡Lo lograste!</h1>
+<div class="sub" style="position:relative">Ya sabes dónde van 6 residuos</div>
+</div>
+<div class="tarjeta" style="margin-top:-54px">
+<div class="estrellas">★★<span style="color:#E3E8E5">★</span></div>
+<div style="display:flex;justify-content:space-around;margin:6px 0 10px;text-align:center">
+<div><div style="font-size:22px;font-weight:700">11</div><div style="font-size:12px;color:#5E6B63">intentos</div></div>
+<div><div style="font-size:22px;font-weight:700">1:32</div><div style="font-size:12px;color:#5E6B63">tiempo</div></div></div>
+<div style="font-size:12px;color:#5E6B63;text-align:center;margin-bottom:6px">Con 9 intentos o menos ganas 3 estrellas</div>
+<div style="border-top:1px solid #EEF0EE;padding-top:6px">
+<div class="grupo"><span class="chip" style="background:#2E9E4F;min-width:120px;text-align:center">Orgánicos</span><span class="mini">🍌 🥚</span></div>
+<div class="grupo"><span class="chip" style="background:#7A8580;min-width:120px;text-align:center">Reciclables</span><span class="mini">🥫 📦</span></div>
+<div class="grupo"><span class="chip" style="background:#E8731A;min-width:120px;text-align:center">No reciclables</span><span class="mini">🧻</span></div>
+<div class="grupo"><span class="chip" style="background:#8B5A3C;min-width:120px;text-align:center">Manejo especial</span><span class="mini">🔋</span></div>
+</div></div>
+<div style="flex:1"></div>
+<div style="padding:0 16px 30px;display:flex;flex-direction:column;gap:10px"><div class="pill">Jugar otra vez</div><div class="borde">Salir</div></div>
+</div></div>
+
+</body></html>
