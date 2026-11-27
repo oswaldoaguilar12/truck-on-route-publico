@@ -314,7 +314,7 @@
       document.getElementById('t-puntos').textContent = `${est.puntosRecibidos} · ${est.baseDeDatos}`;
 
       marcador.setLatLng([u.lat, u.lng]);
-      recorrido.setLatLngs(hist.map((p) => [p.lat, p.lng]));
+      recorrido.setLatLngs(ultimaVuelta(hist).map((p) => [p.lat, p.lng]));
       if (!centrado) { mapa.setView([u.lat, u.lng], 16); centrado = true; }
 
       document.getElementById('tabla').innerHTML = hist.slice(-8).reverse().map((p) =>
@@ -322,6 +322,20 @@
     } catch {
       document.getElementById('estado').textContent = 'API apagada';
     }
+  }
+
+  // T911: igual que la app, sin recorrido en curso solo se dibuja la última vuelta del camión.
+  // Se corta hacia atrás donde hay más de 2 minutos sin datos o un salto de más de 300 m.
+  function ultimaVuelta(puntos) {
+    let i = puntos.length - 1;
+    while (i > 0) {
+      const a = puntos[i - 1], b = puntos[i];
+      const hueco = Date.parse(b.fecha) - Date.parse(a.fecha) > 2 * 60_000;
+      const salto = L.latLng(a.lat, a.lng).distanceTo([b.lat, b.lng]) > 300;
+      if (hueco || salto) break;
+      i--;
+    }
+    return puntos.slice(Math.max(i, 0));
   }
 
   // Busca el recorrido en curso del camión que se ve en el mapa y pinta su camino
@@ -409,6 +423,14 @@
   }));
 
   const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  // Vuelve a llenar una lista sin perder lo que ya eligió el administrador
+  // (antes, al recargar cada 15 s, la lista regresaba a la primera opción)
+  function llenar(id, html) {
+    const sel = $(id);
+    const antes = sel.value;
+    sel.innerHTML = html;
+    if ([...sel.options].some((o) => o.value === antes)) sel.value = antes;
+  }
   const opciones = (lista, texto) => lista.map((x) => `<option value="${x.id}">${esc(texto(x))}</option>`).join('');
 
   async function cargarTodo() {
@@ -428,11 +450,11 @@
       recorridosCache = recorridos;
       $('t-usuarios').innerHTML = usuarios.map((u) => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.correo)}</td><td><span class="chip rol-${u.rol}">${ROLES[u.rol]}</span></td><td>${esc(u.colonia)}</td><td>${u.rol === 'administrador' ? '' : `<button class="btn-sec" data-borrar-usuario="${u.id}">Borrar</button>`}</td></tr>`).join('');
       $('res-texto').innerHTML = `<p><b>${resumen.camiones}</b> camiones · <b>${resumen.choferes}</b> choferes · <b>${resumen.ciudadanos}</b> ciudadanos</p><p><b>${resumen.recorridosHoy}</b> recorridos hoy · <b>${resumen.enRuta}</b> en ruta ahora</p>`;
-      $('r-camion').innerHTML = opciones(camiones, (c) => c.clave + (c.placas ? ' · ' + c.placas : ''));
-      $('r-chofer').innerHTML = opciones(choferes, (c) => c.nombre);
-      $('a-ruta').innerHTML = '<option value="">Todas las rutas</option>' + opciones(rutas, (r) => r.nombre);
+      llenar('r-camion', opciones(camiones, (c) => c.clave + (c.placas ? ' · ' + c.placas : '')));
+      llenar('r-chofer', opciones(choferes, (c) => c.nombre));
+      llenar('a-ruta', '<option value="">Todas las rutas</option>' + opciones(rutas, (r) => r.nombre));
       cargarAvisos();
-      $('r-ruta').innerHTML = opciones(rutas, (r) => r.nombre);
+      llenar('r-ruta', opciones(rutas, (r) => r.nombre));
     } catch (err) { console.warn(err.message); }
   }
 

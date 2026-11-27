@@ -1,6 +1,6 @@
 # Feature Specification: Rutas dibujadas, lo recorrido en gris y desvíos (versión 2.13)
 
-**Feature Branch**: `version-2.13` (sale de `version-2.12`) · **Created**: 2026-11-27 · **Status**: Aprobada (maqueta aprobada por el equipo el 2026-11-27; FR-912 agregado a petición del equipo)
+**Feature Branch**: `version-2.13` (sale de `version-2.12`) · **Created**: 2026-11-27 · **Status**: Terminada (probada en el emulador el 2026-11-27 con las tres cuentas; maqueta aprobada por el equipo el 2026-11-27; FR-912 agregado a petición del equipo)
 
 **Input**: "Al pasar el camión por la ruta se debe pintar de gris por donde ya pasó. Otro, el administrador pueda dibujar la ruta para que el chofer la siga en caso de haber un bloqueo en alguna calle, y para crear las rutas que los camiones usan." (Oswaldo, 2026-11-27)
 
