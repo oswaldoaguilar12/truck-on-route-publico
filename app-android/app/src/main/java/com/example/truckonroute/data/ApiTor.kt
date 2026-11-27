@@ -83,10 +83,11 @@ object ApiTor {
     }
 
     // Devuelve null si se creó la cuenta, o el mensaje de error
-    suspend fun registrar(nombre: String, correo: String, telefono: String, colonia: String, contrasena: String): String? {
+    // v2.12 (spec 008): la API pide aceptaAviso = true para crear la cuenta
+    suspend fun registrar(nombre: String, correo: String, telefono: String, colonia: String, contrasena: String, aceptaAviso: Boolean): String? {
         val r = pedir("POST", "/usuarios", JSONObject()
             .put("nombre", nombre).put("correo", correo.trim()).put("telefono", telefono)
-            .put("colonia", colonia).put("contrasena", contrasena))
+            .put("colonia", colonia).put("contrasena", contrasena).put("aceptaAviso", aceptaAviso))
         return r.error
     }
 

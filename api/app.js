@@ -38,6 +38,8 @@ function crearApp(opciones = {}) {
     next();
   });
   app.use('/panel', express.static(path.join(__dirname, 'public')));
+  // v2.12 (spec 008, FR-805): aviso de privacidad como página web, sin pedir sesión
+  app.get('/privacidad', (req, res) => res.sendFile(path.join(__dirname, 'public', 'privacidad.html')));
   // Leaflet (la librería del mapa) se sirve desde node_modules: el panel no depende de un CDN
   app.use('/panel/leaflet', express.static(path.join(__dirname, 'node_modules', 'leaflet', 'dist')));
 
@@ -48,7 +50,7 @@ function crearApp(opciones = {}) {
       baseDeDatos: db.activa() ? 'MySQL' : 'memoria',
       rutas: [
         'POST /ubicacion', 'GET /ubicacion', 'GET /ubicacion/historial?limite=50',
-        'GET /camiones', 'GET /estadisticas', 'GET /colonias?buscar=zaca', 'GET /panel',
+        'GET /camiones', 'GET /estadisticas', 'GET /colonias?buscar=zaca', 'GET /panel', 'GET /privacidad',
         'POST /sesion', 'POST /usuarios', 'GET /avisos', 'GET /recorridos/en-curso', '/admin/*', '/chofer/*',
       ],
     });

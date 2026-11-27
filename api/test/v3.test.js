@@ -56,12 +56,32 @@ test('login correcto devuelve token y rol; incorrecto da 401', async () => {
 });
 
 test('registro crea un ciudadano y rechaza correos repetidos o inválidos', async () => {
-  const r = await pedir('POST', '/usuarios', { nombre: 'Luis', correo: 'luis@gmail.com', contrasena: 'luis123', colonia: 'Centro' });
+  const r = await pedir('POST', '/usuarios', { nombre: 'Luis', correo: 'luis@gmail.com', contrasena: 'luis123', colonia: 'Centro', aceptaAviso: true });
   assert.strictEqual(r.status, 201);
   assert.strictEqual(r.cuerpo.usuario.rol, 'ciudadano');
-  assert.strictEqual((await pedir('POST', '/usuarios', { nombre: 'Luis', correo: 'luis@gmail.com', contrasena: 'luis123' })).status, 400);
+  assert.strictEqual((await pedir('POST', '/usuarios', { nombre: 'Luis', correo: 'luis@gmail.com', contrasena: 'luis123', aceptaAviso: true })).status, 400);
   assert.strictEqual((await pedir('POST', '/usuarios', { nombre: 'X', correo: 'hola.com', contrasena: 'abcdef' })).status, 400);
   assert.strictEqual((await pedir('POST', '/usuarios', { nombre: 'X', correo: 'x@gmail.com', contrasena: '123' })).status, 400);
+});
+
+// v2.12 (spec 008): aviso de privacidad
+test('el registro pide aceptar el aviso de privacidad y guarda la fecha', async () => {
+  const sin = await pedir('POST', '/usuarios', { nombre: 'Rosa', correo: 'rosa@gmail.com', contrasena: 'rosa123' });
+  assert.strictEqual(sin.status, 400);
+  assert.strictEqual(sin.cuerpo.error, 'Debes aceptar el aviso de privacidad');
+  const conTexto = await pedir('POST', '/usuarios', { nombre: 'Rosa', correo: 'rosa@gmail.com', contrasena: 'rosa123', aceptaAviso: 'si' });
+  assert.strictEqual(conTexto.status, 400); // solo vale true
+  const con = await pedir('POST', '/usuarios', { nombre: 'Rosa', correo: 'rosa@gmail.com', contrasena: 'rosa123', aceptaAviso: true });
+  assert.strictEqual(con.status, 201);
+  assert.ok(!Number.isNaN(Date.parse(con.cuerpo.usuario.avisoAceptado)));
+});
+
+test('GET /privacidad muestra el aviso sin pedir sesión', async () => {
+  const r = await fetch(base + '/privacidad');
+  assert.strictEqual(r.status, 200);
+  const html = await r.text();
+  assert.ok(html.includes('Aviso de privacidad'));
+  assert.ok(html.includes('privacidad@truckonroute.mx'));
 });
 
 test('las rutas de administrador piden sesión y rol', async () => {

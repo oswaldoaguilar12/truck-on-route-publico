@@ -56,6 +56,7 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Inicio, 1: Perfil
     var showHelpDialog by remember { mutableStateOf(false) } // Diálogo Ayuda
     var verAmbiente by remember { mutableStateOf(false) } // v2.11 (spec 007): sección "Cuida tu ambiente"
+    var verAviso by remember { mutableStateOf(false) } // v2.12 (spec 008): aviso de privacidad
 
     // Versión 2.8: se retiró la clave fija "admin123"; el administrador usa el panel web con su cuenta
 
@@ -94,10 +95,11 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                 // Opción: Inicio
                 NavigationDrawerItem(
                     label = { Text("Inicio") },
-                    selected = selectedTab == 0 && !verAmbiente,
+                    selected = selectedTab == 0 && !verAmbiente && !verAviso,
                     onClick = {
                         selectedTab = 0
                         verAmbiente = false
+                        verAviso = false
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Home, null) },
@@ -117,9 +119,29 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                     selected = verAmbiente,
                     onClick = {
                         verAmbiente = true
+                        verAviso = false
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Eco, null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = GreenMain.copy(alpha = 0.14f),
+                        selectedIconColor = GreenDark,
+                        selectedTextColor = GreenDark,
+                        unselectedIconColor = TextoGrisTor
+                    )
+                )
+
+                // Versión 2.12 (FR-803): aviso de privacidad
+                NavigationDrawerItem(
+                    label = { Text("Aviso de privacidad") },
+                    selected = verAviso,
+                    onClick = {
+                        verAviso = true
+                        verAmbiente = false
+                        scope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.PrivacyTip, null) },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     colors = NavigationDrawerItemDefaults.colors(
                         selectedContainerColor = GreenMain.copy(alpha = 0.14f),
@@ -173,7 +195,8 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
     ) {
         // --- CONTENIDO ---
         // v2.11: mientras "Cuida tu ambiente" está abierta, ocupa toda la pantalla
-        if (verAmbiente) CuidaAmbienteScreen(onSalir = { verAmbiente = false }) else run {
+        if (verAviso) AvisoPrivacidadScreen(onAtras = { verAviso = false })
+        else if (verAmbiente) CuidaAmbienteScreen(onSalir = { verAmbiente = false }) else run {
             // Versión 2.10 (spec 006): sin encabezado; en Inicio el mapa llega hasta arriba
             // (contentWindowInsets = 0: cada pantalla deja su propio espacio para la barra de estado)
             Scaffold(

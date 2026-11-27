@@ -52,7 +52,8 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
     return d.usuarios.find((u) => u.id === Number(id)) || null;
   }
 
-  function crearUsuario({ nombre, correo, telefono = '', colonia = '', contrasena, rol = 'ciudadano' }) {
+  // v2.12 (spec 008, FR-806): avisoAceptado = fecha en que el ciudadano aceptó el aviso de privacidad
+  function crearUsuario({ nombre, correo, telefono = '', colonia = '', contrasena, rol = 'ciudadano', avisoAceptado = null }) {
     const u = {
       id: nuevoId(),
       nombre: String(nombre).trim(),
@@ -63,6 +64,7 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
       contrasena: hashContrasena(contrasena),
       creado: new Date().toISOString(),
     };
+    if (avisoAceptado) u.avisoAceptado = avisoAceptado;
     d.usuarios.push(u);
     guardar();
     return u;

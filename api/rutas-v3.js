@@ -47,7 +47,9 @@ function crearRutasV3(datos) {
     const c = req.body || {};
     const error = revisarCuenta(c);
     if (error) return res.status(400).json({ error });
-    const u = datos.crearUsuario({ ...c, rol: 'ciudadano' });
+    // v2.12 (spec 008, FR-806): sin aceptar el aviso de privacidad no se crea la cuenta
+    if (c.aceptaAviso !== true) return res.status(400).json({ error: 'Debes aceptar el aviso de privacidad' });
+    const u = datos.crearUsuario({ ...c, rol: 'ciudadano', avisoAceptado: new Date().toISOString() });
     res.status(201).json({ usuario: datos.publico(u) });
   });
 

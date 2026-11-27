@@ -1,6 +1,13 @@
 package com.example.truckonroute.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.shadow
@@ -44,6 +51,14 @@ fun RegistroScreen(onBack: () -> Unit) {
     val alcance = rememberCoroutineScope()
     val faltaNombre = nombre.isBlank()
     val contrasenaCorta = contrasena.length < 6
+    // Versión 2.12 (spec 008): casilla del aviso de privacidad y pantalla para leerlo
+    var aceptaAviso by remember { mutableStateOf(false) }
+    var verAviso by remember { mutableStateOf(false) }
+    if (verAviso) {
+        // Los datos escritos no se pierden: el estado vive arriba de este "if"
+        AvisoPrivacidadScreen(onAtras = { verAviso = false })
+        return
+    }
 
     // Versión 2.10 (spec 006): mismo fondo verde y hoja blanca que el login.
     // Los campos, la validación y la llamada a la API son los mismos de la v2.8.
@@ -67,6 +82,41 @@ fun RegistroScreen(onBack: () -> Unit) {
             "Contraseña", Icons.Default.Lock, true, valor = contrasena, alCambiar = { contrasena = it },
             error = if (intento && contrasenaCorta) "Mínimo 6 caracteres" else null
         )
+        // FR-801: casilla "Acepto el aviso de privacidad"; las palabras "aviso de privacidad" abren el aviso
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(VerdeClaroTor, RoundedCornerShape(16.dp))
+                .clickable { aceptaAviso = !aceptaAviso }
+                .padding(end = 14.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = aceptaAviso,
+                onCheckedChange = { aceptaAviso = it },
+                colors = CheckboxDefaults.colors(checkedColor = VerdeTor, uncheckedColor = TextoGrisTor)
+            )
+            Text(
+                buildAnnotatedString {
+                    append("Acepto el ")
+                    withLink(
+                        LinkAnnotation.Clickable(
+                            tag = "aviso",
+                            styles = TextLinkStyles(SpanStyle(color = VerdeOscuroTor, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline))
+                        ) { verAviso = true }
+                    ) { append("aviso de privacidad") }
+                    append(". Sé qué datos guarda la app y para qué.")
+                },
+                fontSize = 13.sp, color = TextoOscuroTor, lineHeight = 19.sp
+            )
+        }
+        // FR-802: aviso si intenta registrarse sin marcar la casilla
+        if (intento && !aceptaAviso) {
+            Text("Acepta el aviso de privacidad para continuar", color = Color(0xFFB00020), fontSize = 13.sp, modifier = Modifier.padding(start = 6.dp, top = 4.dp))
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+
         errorServidor?.let { Text(it, color = Color(0xFFB00020)) }
         if (creada) Text("¡Cuenta creada! Ya puedes iniciar sesión.", color = Color(0xFF0A7D2C), fontWeight = FontWeight.Bold)
 
@@ -79,10 +129,10 @@ fun RegistroScreen(onBack: () -> Unit) {
             onClick = {
                 intento = true
                 errorServidor = null
-                if (correoValido && !faltaNombre && !contrasenaCorta) {
+                if (correoValido && !faltaNombre && !contrasenaCorta && aceptaAviso) {
                     guardando = true
                     alcance.launch {
-                        errorServidor = ApiTor.registrar(nombre, correo, telefono, colonia, contrasena)
+                        errorServidor = ApiTor.registrar(nombre, correo, telefono, colonia, contrasena, aceptaAviso)
                         guardando = false
                         if (errorServidor == null) {
                             creada = true
