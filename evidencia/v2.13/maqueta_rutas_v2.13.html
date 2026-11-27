@@ -1,0 +1,84 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#E3E8E5;font-family:Poppins,sans-serif;color:#1C2B22;padding:30px;display:flex;gap:30px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:12px}.cap{font-weight:600;font-size:17px;color:#0A7D2C}
+.tel{width:390px;height:844px;border-radius:44px;overflow:hidden;background:#F5F7F6;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.18);border:8px solid #1C2B22}
+.map{position:absolute;left:0;right:0;background:url(mapa_limpio.png) center/cover}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.12);padding:12px 20px 24px}
+.asa{width:40px;height:5px;border-radius:3px;background:#DDE3DF;margin:0 auto 12px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:14px;font-size:12px;font-weight:600}
+.leg{display:flex;gap:14px;font-size:12px;color:#5E6B63;align-items:center}
+.leg i{display:inline-block;width:22px;height:6px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.pc{width:760px;height:844px;border-radius:16px;overflow:hidden;background:#F5F7F6;box-shadow:0 20px 50px rgba(0,0,0,.18);border:1px solid #cfd6d2;display:flex;flex-direction:column}
+.url{background:#ECEFEE;padding:10px 14px;display:flex;gap:8px;align-items:center;font-size:13px;border-bottom:1px solid #d5dbd8}
+.url .d{width:11px;height:11px;border-radius:6px}.url .u{flex:1;background:#fff;border-radius:16px;padding:6px 14px;color:#5E6B63}
+.btn{padding:9px 14px;border-radius:20px;font-size:13px;font-weight:600;border:2px solid #019B43;color:#0A7D2C;background:#fff}
+.btn.v{background:#019B43;color:#fff}
+.ruta{padding:12px 14px;border-radius:14px;background:#fff;font-size:13px;margin-bottom:8px;border:2px solid transparent}
+.ruta b{display:block;font-size:14px}
+</style></head><body>
+
+<!-- 1. Panel: dibujar la ruta -->
+<div class="col"><div class="cap">1. Panel web: el admin dibuja la ruta</div><div class="pc">
+<div class="url"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="u">localhost:3000/panel · Rutas</span></div>
+<div style="background:linear-gradient(120deg,#019B43,#0A7D2C);color:#fff;padding:14px 22px;display:flex;gap:18px;font-size:14px;align-items:center"><b style="font-size:17px">Truck on Route · Panel</b><span style="opacity:.8">Monitoreo</span><span style="opacity:.8">Camiones</span><span style="opacity:.8">Choferes</span><span style="background:rgba(255,255,255,.2);padding:4px 12px;border-radius:12px;font-weight:600">Rutas</span><span style="opacity:.8">Recorridos</span></div>
+<div style="display:flex;flex:1;min-height:0">
+<div style="width:230px;padding:16px;background:#F5F7F6;border-right:1px solid #e1e6e3">
+<div style="font-size:12px;color:#5E6B63;margin-bottom:8px">Elige una ruta para dibujar su camino</div>
+<div class="ruta" style="border-color:#019B43"><b>Ruta Centro</b><span style="color:#5E6B63">Centro → Zacamila → Cuauhtémoc → Los Ángeles</span><div style="margin-top:6px"><span class="chip" style="background:#E8F6EE;color:#0A7D2C">Dibujando · 9 puntos</span></div></div>
+<div class="ruta"><b>Ruta Norte</b><span style="color:#5E6B63">Texcapa → El Ocote → La Cumbre</span><div style="margin-top:6px"><span class="chip" style="background:#ECEFEE;color:#5E6B63">Sin camino</span></div></div>
+<div style="font-size:12px;color:#5E6B63;margin-top:14px;line-height:1.5">Da clic en el mapa calle por calle. Cada clic agrega un punto.</div>
+</div>
+<div style="flex:1;position:relative">
+<div class="map" style="top:0;bottom:0"></div>
+<svg style="position:absolute;inset:0" width="100%" height="100%" viewBox="0 0 530 720" preserveAspectRatio="none">
+<polyline points="70,560 150,520 210,470 260,430 300,380 330,330 390,300 430,250 470,200" fill="none" stroke="#019B43" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<g fill="#fff" stroke="#0A7D2C" stroke-width="3">
+<circle cx="70" cy="560" r="7"/><circle cx="150" cy="520" r="7"/><circle cx="210" cy="470" r="7"/><circle cx="260" cy="430" r="7"/><circle cx="300" cy="380" r="7"/><circle cx="330" cy="330" r="7"/><circle cx="390" cy="300" r="7"/><circle cx="430" cy="250" r="7"/><circle cx="470" cy="200" r="9" fill="#019B43"/></g>
+<line x1="470" y1="200" x2="500" y2="160" stroke="#0A7D2C" stroke-width="3" stroke-dasharray="6 6"/>
+</svg>
+<div style="position:absolute;left:20px;bottom:20px;display:flex;gap:8px"><span class="btn">↶ Deshacer punto</span><span class="btn">Borrar todo</span><span class="btn v">Guardar camino</span></div>
+</div></div></div></div>
+
+<!-- 2. App: gris lo recorrido -->
+<div class="col"><div class="cap">2. App: lo recorrido se pinta de gris</div><div class="tel">
+<div class="map" style="top:0;height:600px"></div>
+<svg style="position:absolute;left:0;top:0" width="390" height="600" viewBox="0 0 390 600">
+<polyline points="30,500 95,470 140,430 180,400 215,360" fill="none" stroke="#9AA39E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="215,360 240,320 285,295 315,255 350,215" fill="none" stroke="#019B43" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="215" cy="360" r="30" fill="#019B43" opacity=".18"/>
+<circle cx="215" cy="360" r="18" fill="#019B43" stroke="#fff" stroke-width="3"/>
+<text x="215" y="366" font-size="16" text-anchor="middle">🚛</text>
+<circle cx="300" cy="275" r="7" fill="#1565C0" stroke="#fff" stroke-width="3"/>
+</svg>
+<div style="position:absolute;top:18px;left:16px;right:16px;display:flex;gap:10px"><div style="flex:1;height:48px;border-radius:24px;background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.12);display:flex;align-items:center;padding:0 18px;font-size:14px;color:#5E6B63">🔍 Busca tu colonia</div><div style="width:48px;height:48px;border-radius:24px;background:#019B43"></div></div>
+<div style="position:absolute;top:78px;left:16px"><span class="chip" style="background:#019B43;color:#fff">● En ruta</span></div>
+<div class="hoja" style="height:290px"><div class="asa"></div>
+<div style="font-size:13px;color:#5E6B63">Ruta Centro · CAMION-01</div>
+<div style="font-size:24px;font-weight:700;margin:2px 0 8px">Lleva la mitad del camino</div>
+<div style="height:10px;border-radius:5px;background:#E3E8E5;overflow:hidden;margin-bottom:6px"><div style="width:52%;height:100%;background:#019B43"></div></div>
+<div style="font-size:12px;color:#5E6B63;margin-bottom:14px">52% del camino recorrido</div>
+<div class="leg"><span><i style="background:#9AA39E"></i>Ya pasó</span><span><i style="background:#019B43"></i>Falta</span><span><i style="background:#1565C0;width:10px;height:10px;border-radius:5px"></i>Tú</span></div>
+<div style="margin-top:14px;background:#E8F6EE;border-radius:14px;padding:10px 14px;font-size:13px;color:#0A7D2C">El camión está a <b>230 m</b> de ti</div>
+</div></div></div>
+
+<!-- 3. Chofer: desvío -->
+<div class="col"><div class="cap">3. Chofer: desvío por bloqueo</div><div class="tel">
+<div style="position:absolute;top:0;left:0;right:0;background:#0A7D2C;color:#fff;padding:22px 20px 18px"><div style="font-size:13px;opacity:.85">Ruta en curso</div><div style="font-size:22px;font-weight:700">Ruta Centro</div></div>
+<div style="position:absolute;top:96px;left:12px;right:12px;z-index:2;background:#FEF3C7;border:2px solid #F59E0B;border-radius:18px;padding:12px 14px;display:flex;gap:12px;box-shadow:0 8px 20px rgba(0,0,0,.12)">
+<div style="font-size:24px">⚠️</div><div><div style="font-weight:700;color:#B45309">Ruta cambiada por bloqueo</div><div style="font-size:13px;color:#7A4A06">Calle Hidalgo cerrada por obra. Sigue la línea amarilla.</div></div></div>
+<div class="map" style="top:96px;height:520px"></div>
+<svg style="position:absolute;left:0;top:96px" width="390" height="520" viewBox="0 0 390 520">
+<polyline points="30,440 95,410 140,370 180,340 215,300 240,260 285,235 315,195 350,155" fill="none" stroke="#019B43" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+<polyline points="30,440 95,410 140,370" fill="none" stroke="#9AA39E" stroke-width="8" stroke-linecap="round"/>
+<polyline points="140,370 120,320 150,270 210,250 240,260" fill="none" stroke="#F59E0B" stroke-width="7" stroke-dasharray="12 9" stroke-linecap="round" stroke-linejoin="round"/>
+<g stroke="#B91C1C" stroke-width="5" stroke-linecap="round"><line x1="185" y1="315" x2="211" y2="341"/><line x1="211" y1="315" x2="185" y2="341"/></g>
+<circle cx="140" cy="370" r="17" fill="#019B43" stroke="#fff" stroke-width="3"/><text x="140" y="376" font-size="15" text-anchor="middle">🚛</text>
+</svg>
+<div class="hoja" style="height:230px"><div class="asa"></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;font-weight:700">2 de 4 colonias</div><span class="chip" style="background:#FEF3C7;color:#B45309">Con desvío</span></div>
+<div class="leg" style="margin:12px 0"><span><i style="background:#9AA39E"></i>Ya pasaste</span><span><i style="background:repeating-linear-gradient(90deg,#F59E0B 0 8px,transparent 8px 12px)"></i>Desvío</span><span style="color:#B91C1C;font-weight:700">✕ Bloqueo</span></div>
+<div style="height:56px;border-radius:28px;background:#B91C1C;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:16px">■ Terminar ruta</div>
+</div></div></div>
+</body></html>

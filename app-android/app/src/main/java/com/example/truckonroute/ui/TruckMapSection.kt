@@ -16,7 +16,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.truckonroute.R
+import com.example.truckonroute.data.ApiTor
 import com.example.truckonroute.data.Estadisticas
+import com.example.truckonroute.data.PuntoRuta
+import com.example.truckonroute.data.RecorridoEnCurso
 import com.example.truckonroute.data.Ubicacion
 import com.example.truckonroute.data.UbicacionApi
 import kotlinx.coroutines.delay
@@ -73,32 +76,39 @@ data class DatosCamion(
     val cargando: Boolean,
     val ahora: Long,
     val recorrido: List<Ubicacion>,      // versión 2.6
-    val estadisticas: Estadisticas?      // versión 2.6
+    val estadisticas: Estadisticas?,     // versión 2.6
+    val enCurso: RecorridoEnCurso? = null // versión 2.13: camino dibujado, avance y desvío
 )
 
+// camion: si se da (pantalla del chofer), se sigue a ese camión; si no, al último que mandó ubicación
 @Composable
-fun rememberDatosCamion(): DatosCamion {
+fun rememberDatosCamion(camion: String? = null): DatosCamion {
     var ubicacion by remember { mutableStateOf<Ubicacion?>(null) }
     var cargando by remember { mutableStateOf(true) }
     var ahora by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var recorrido by remember { mutableStateOf<List<Ubicacion>>(emptyList()) }
     var estadisticas by remember { mutableStateOf<Estadisticas?>(null) }
+    var enCurso by remember { mutableStateOf<RecorridoEnCurso?>(null) }
 
     // Consulta la API cada 10 s mientras Inicio está visible.
     // Al salir de Inicio, Compose cancela este ciclo solo.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(camion) {
         while (true) {
-            ubicacion = UbicacionApi.obtenerUltima()
+            ubicacion = if (camion != null) ApiTor.ubicacionDe(camion) else UbicacionApi.obtenerUltima()
             if (ubicacion != null) {
                 recorrido = UbicacionApi.obtenerHistorial()
                 estadisticas = UbicacionApi.obtenerEstadisticas()
             }
+            // v2.13 (FR-904): el recorrido en curso de ese camión trae el camino y cuánto lleva
+            val clave = camion ?: ubicacion?.camion
+            val lista = ApiTor.recorridosEnCurso()
+            enCurso = lista.firstOrNull { it.camion == clave } ?: lista.firstOrNull()
             cargando = false
             ahora = System.currentTimeMillis()
             delay(CONSULTA_CADA_MS)
         }
     }
-    return DatosCamion(ubicacion, cargando, ahora, recorrido, estadisticas)
+    return DatosCamion(ubicacion, cargando, ahora, recorrido, estadisticas, enCurso)
 }
 
 // Guarda el último punto donde se dibujó el camión (no es estado de Compose: no redibuja la pantalla)
@@ -132,6 +142,15 @@ fun MapaCamion(
             outlinePaint.color = android.graphics.Color.parseColor("#019B43")
             outlinePaint.strokeWidth = 12f
             outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+        }
+    }
+    // Versión 2.13 (FR-906, FR-909): camino dibujado. Gris = ya pasó, verde = falta, ámbar punteado = desvío
+    val densidad = contexto.resources.displayMetrics.density
+    val faltaLinea = remember { lineaDeRuta(mapa, "#019B43", 6f * densidad) }
+    val pasoLinea = remember { lineaDeRuta(mapa, "#9AA3A0", 6f * densidad) }
+    val desvioLinea = remember {
+        lineaDeRuta(mapa, "#E8A317", 5f * densidad).apply {
+            outlinePaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(10f * densidad, 7f * densidad), 0f)
         }
     }
     val ultimo = remember { UltimoPunto() }
@@ -203,8 +222,23 @@ fun MapaCamion(
         modifier = modifier,
         update = { vista ->
             val u = datos.ubicacion
+            // v2.13: el camino dibujado va hasta abajo, debajo del camión
+            val rec = datos.enCurso
+            val trazo = rec?.trazo.orEmpty()
+            val geo = { lista: List<PuntoRuta> -> lista.map { GeoPoint(it.lat, it.lng) } }
+            val paso = if (rec != null && rec.avance > 0) geo(trazo.take(rec.avance)) else emptyList()
+            val falta = geo(trazo.drop(maxOf(0, (rec?.avance ?: 0) - 1)))
+            val desvio = geo(rec?.desvio.orEmpty())
+            // Se quitan y se vuelven a poner en orden: verde, gris y encima el desvío
+            vista.overlays.removeAll(listOf(faltaLinea, pasoLinea, desvioLinea))
+            var lugar = 1 // 0 es el crédito del mapa
+            for ((l, puntos) in listOf(faltaLinea to falta, pasoLinea to paso, desvioLinea to desvio)) {
+                l.setPoints(puntos)
+                if (puntos.size >= 2) vista.overlays.add(lugar++, l)
+            }
             if (u != null) {
-                linea.setPoints(datos.recorrido.map { GeoPoint(it.lat, it.lng) })
+                // FR-907: con camino dibujado, el historial verde ya no se dibuja (el gris lo reemplaza)
+                linea.setPoints(if (trazo.isEmpty()) datos.recorrido.map { GeoPoint(it.lat, it.lng) } else emptyList())
                 if (ultimo.punto == null) {
                     marcador.position = GeoPoint(u.lat, u.lng)
                     pulso.punto = marcador.position
@@ -224,6 +258,15 @@ fun MapaCamion(
             vista.invalidate()
         }
     )
+}
+
+// v2.13: línea gruesa con puntas redondas para el camino dibujado
+private fun lineaDeRuta(mapa: MapView, color: String, grosor: Float) = Polyline(mapa).apply {
+    outlinePaint.color = android.graphics.Color.parseColor(color)
+    outlinePaint.strokeWidth = grosor
+    outlinePaint.strokeCap = Paint.Cap.ROUND
+    outlinePaint.strokeJoin = Paint.Join.ROUND
+    setOnClickListener { _, _, _ -> false } // no abre globos al tocarla
 }
 
 // Crea el mapa centrado en Huauchinango

@@ -167,3 +167,82 @@ test('los datos siguen después de reiniciar la API', async () => {
   const ta = await entrar('admin@truckonroute.mx', 'Admin2026');
   assert.strictEqual((await pedir('GET', '/admin/camiones', null, ta)).cuerpo.length, 2);
 });
+
+// ---------------------------------------------------------------------------
+// Versión 2.13 (spec 009): rutas dibujadas, gris de lo recorrido y desvío
+// ---------------------------------------------------------------------------
+const { densificar, avanceEnTrazo } = require('../geo');
+
+test('el avance solo cuenta puntos cercanos y nunca regresa', () => {
+  const trazo = densificar([[20.17, -98.05], [20.17, -98.048]]); // ~210 m
+  assert.ok(trazo.length >= 11);
+  const mitad = trazo[Math.floor(trazo.length / 2)];
+  const a = avanceEnTrazo(trazo, [{ lat: trazo[0][0], lng: trazo[0][1] }, { lat: mitad[0], lng: mitad[1] }]);
+  assert.ok(a > 1 && a < trazo.length);
+  // si el GPS brinca hacia el inicio, el avance se queda igual
+  const b = avanceEnTrazo(trazo, [{ lat: trazo[0][0], lng: trazo[0][1] }, { lat: mitad[0], lng: mitad[1] }, { lat: trazo[0][0], lng: trazo[0][1] }]);
+  assert.strictEqual(b, a);
+  // una ubicación lejos no cuenta
+  assert.strictEqual(avanceEnTrazo(trazo, [{ lat: 20.2, lng: -98.1 }]), 0);
+});
+
+test('el administrador dibuja el camino, se pinta el avance y pone un desvío que avisa a todos', async () => {
+  const t = await entrar('admin@truckonroute.mx', 'Admin2026');
+  const ruta = (await pedir('POST', '/admin/rutas', { nombre: 'Ruta Trazo', colonias: ['Centro'] }, t)).cuerpo;
+  const camino = [[20.17, -98.05], [20.17, -98.048]];
+
+  // FR-903: solo administrador y con al menos 2 puntos válidos
+  assert.strictEqual((await pedir('PUT', `/admin/rutas/${ruta.id}/trazo`, { trazo: camino })).status, 401);
+  assert.strictEqual((await pedir('PUT', `/admin/rutas/${ruta.id}/trazo`, { trazo: [[20.17, -98.05]] }, t)).status, 400);
+  assert.strictEqual((await pedir('PUT', `/admin/rutas/${ruta.id}/trazo`, { trazo: [[200, 0], [0, 0]] }, t)).status, 400);
+  assert.strictEqual((await pedir('PUT', `/admin/rutas/999/trazo`, { trazo: camino }, t)).status, 404);
+  const ok = await pedir('PUT', `/admin/rutas/${ruta.id}/trazo`, { trazo: camino }, t);
+  assert.strictEqual(ok.status, 200);
+  assert.deepStrictEqual(ok.cuerpo.trazo, camino);
+
+  // Recorrido con un camión nuevo para que su historial esté limpio
+  const camion = (await pedir('POST', '/admin/camiones', { clave: 'TRAZO-01' }, t)).cuerpo;
+  const chofer = (await pedir('POST', '/admin/choferes', { nombre: 'Rosa', correo: 'rosa@truckonroute.mx', contrasena: 'rosa123' }, t)).cuerpo;
+  const rec = (await pedir('POST', '/admin/recorridos', { camionId: camion.id, choferId: chofer.id, rutaId: ruta.id }, t)).cuerpo;
+
+  // No se puede desviar un recorrido que no ha empezado
+  assert.strictEqual((await pedir('PUT', `/admin/recorridos/${rec.id}/desvio`, { trazo: camino, motivo: 'Obra' }, t)).status, 400);
+
+  const tc = await entrar('rosa@truckonroute.mx', 'rosa123');
+  await pedir('POST', `/chofer/recorridos/${rec.id}/iniciar`, null, tc);
+
+  // FR-904: sin ubicaciones el avance es 0
+  let mio = (await pedir('GET', '/recorridos/en-curso')).cuerpo.find((x) => x.id === rec.id);
+  assert.ok(mio.trazo.length >= 11);
+  assert.strictEqual(mio.avance, 0);
+  assert.strictEqual(mio.desvio, null);
+
+  // El camión pasa por la mitad del camino
+  await pedir('POST', '/ubicacion', { camion: 'TRAZO-01', lat: 20.17, lng: -98.05, fuente: 'simulacion' });
+  await pedir('POST', '/ubicacion', { camion: 'TRAZO-01', lat: 20.17, lng: -98.049, fuente: 'simulacion' });
+  mio = (await pedir('GET', '/recorridos/en-curso')).cuerpo.find((x) => x.id === rec.id);
+  assert.ok(mio.avance > 1 && mio.avance < mio.trazo.length);
+
+  // FR-908 y FR-912: desvío con motivo; mensaje al chofer y aviso a los ciudadanos
+  const antes = new Date().toISOString();
+  assert.strictEqual((await pedir('PUT', `/admin/recorridos/${rec.id}/desvio`, { trazo: camino }, t)).status, 400);
+  const desvio = [[20.17, -98.049], [20.171, -98.049], [20.171, -98.048]];
+  const d = await pedir('PUT', `/admin/recorridos/${rec.id}/desvio`, { trazo: desvio, motivo: 'Calle Hidalgo cerrada por obra' }, t);
+  assert.strictEqual(d.status, 200);
+  mio = (await pedir('GET', '/recorridos/en-curso')).cuerpo.find((x) => x.id === rec.id);
+  assert.deepStrictEqual(mio.desvio, desvio);
+  assert.strictEqual(mio.motivoDesvio, 'Calle Hidalgo cerrada por obra');
+
+  const avisos = (await pedir('GET', `/avisos?desde=${encodeURIComponent(antes)}`)).cuerpo;
+  const aviso = avisos.find((a) => a.tipo === 'desvio');
+  assert.ok(aviso);
+  assert.strictEqual(aviso.titulo, 'El camión cambió su ruta');
+  assert.match(aviso.mensaje, /Calle Hidalgo cerrada por obra/);
+  const mensajes = (await pedir('GET', '/chofer/mensajes', null, tc)).cuerpo;
+  assert.ok(mensajes.some((m) => /Ruta cambiada por bloqueo/.test(m.texto)));
+
+  // FR-910: al terminar se quita el desvío
+  await pedir('POST', `/chofer/recorridos/${rec.id}/terminar`, null, tc);
+  const lista = (await pedir('GET', '/admin/recorridos', null, t)).cuerpo.find((x) => x.id === rec.id);
+  assert.strictEqual(lista.desvio, undefined);
+});

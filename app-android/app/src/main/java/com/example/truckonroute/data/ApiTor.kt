@@ -28,14 +28,31 @@ data class Recorrido(
     val indicaciones: String,
     val estado: String,  // "programado", "en_curso" o "terminado"
     val fecha: String,
-    val inicio: String?
+    val inicio: String?,
+    val motivoDesvio: String? = null // v2.13 (FR-909): motivo si el administrador puso un desvío
 )
 
 data class Mensaje(val id: Int, val texto: String, val fecha: String)
 
-data class Aviso(val id: Int, val titulo: String, val mensaje: String, val fecha: String)
+// v2.13: tipo "en_ruta" o "desvio" (FR-912)
+data class Aviso(val id: Int, val titulo: String, val mensaje: String, val fecha: String, val tipo: String = "")
 
-data class RecorridoEnCurso(val id: Int, val camion: String, val ruta: String, val colonias: List<String>)
+// v2.13 (spec 009): un punto del camino dibujado
+data class PuntoRuta(val lat: Double, val lng: Double)
+
+data class RecorridoEnCurso(
+    val id: Int,
+    val camion: String,
+    val ruta: String,
+    val colonias: List<String>,
+    val trazo: List<PuntoRuta> = emptyList(),   // FR-904: camino dibujado (vacío si no tiene)
+    val avance: Int = 0,                        // cuántos puntos del trazo ya pasó el camión
+    val desvio: List<PuntoRuta> = emptyList(),  // FR-908: desvío por bloqueo (vacío si no hay)
+    val motivoDesvio: String? = null
+) {
+    // De 0 a 1: qué parte del camino ya recorrió
+    val fraccion: Float get() = if (trazo.isEmpty()) 0f else avance.toFloat() / trazo.size
+}
 
 object ApiTor {
 
@@ -127,8 +144,15 @@ object ApiTor {
         indicaciones = j.optString("indicaciones"),
         estado = j.optString("estado"),
         fecha = j.optString("fecha"),
-        inicio = if (j.isNull("inicio")) null else j.optString("inicio")
+        inicio = if (j.isNull("inicio")) null else j.optString("inicio"),
+        motivoDesvio = if (j.isNull("motivoDesvio") || !j.has("motivoDesvio")) null else j.optString("motivoDesvio")
     )
+
+    // v2.13: [[lat, lng], ...] -> lista de puntos
+    private fun puntos(a: JSONArray?): List<PuntoRuta> = if (a == null) emptyList() else (0 until a.length()).mapNotNull {
+        val p = a.optJSONArray(it) ?: return@mapNotNull null
+        PuntoRuta(p.optDouble(0), p.optDouble(1))
+    }
 
     private fun lista(a: JSONArray?): List<String> = if (a == null) emptyList() else (0 until a.length()).map { a.getString(it) }
 
@@ -143,7 +167,7 @@ object ApiTor {
             val arreglo = JSONArray(r.texto)
             (0 until arreglo.length()).map {
                 val a = arreglo.getJSONObject(it)
-                Aviso(a.optInt("id"), a.optString("titulo"), a.optString("mensaje"), a.optString("fecha"))
+                Aviso(a.optInt("id"), a.optString("titulo"), a.optString("mensaje"), a.optString("fecha"), a.optString("tipo"))
             }
         } catch (e: Exception) { emptyList() }
     }
@@ -155,7 +179,13 @@ object ApiTor {
             val arreglo = JSONArray(r.texto)
             (0 until arreglo.length()).map {
                 val j = arreglo.getJSONObject(it)
-                RecorridoEnCurso(j.optInt("id"), j.optString("camion"), j.optString("ruta"), lista(j.optJSONArray("colonias")))
+                RecorridoEnCurso(
+                    j.optInt("id"), j.optString("camion"), j.optString("ruta"), lista(j.optJSONArray("colonias")),
+                    trazo = puntos(j.optJSONArray("trazo")),
+                    avance = j.optInt("avance"),
+                    desvio = puntos(j.optJSONArray("desvio")),
+                    motivoDesvio = if (j.isNull("motivoDesvio") || !j.has("motivoDesvio")) null else j.optString("motivoDesvio")
+                )
             }
         } catch (e: Exception) { emptyList() }
     }

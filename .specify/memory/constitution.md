@@ -1,12 +1,11 @@
 <!--
 Informe de sincronización (Sync Impact Report)
-- Versión: 4.1.0 → 4.2.0 (MINOR: se agrega el aviso de privacidad)
-- Principios modificados:
-  - I. Alcance por fases → la Fase 4 incluye el aviso de privacidad en la app y en el panel web (spec 008)
-  - IV. Sencillo, seguro y en español → los datos personales solo se usan como dice el aviso de privacidad
-- Principios sin cambio: II, III y V
-- Specs revisadas: specs/008-aviso-privacidad (nueva)
-- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0 a v4.1.0)
+- Versión: 4.2.0 → 4.3.0 (MINOR: rutas dibujadas en el mapa)
+- Principio modificado:
+  - I. Alcance por fases → se agrega la Fase 5 (spec 009): el administrador dibuja la ruta en el panel, el mapa pinta de gris lo que el camión ya recorrió y el administrador puede marcar un desvío por bloqueo. Sale de "fuera de alcance" el pintado de la ruta.
+- Principios sin cambio: II, III, IV y V
+- Specs revisadas: specs/009-rutas-dibujadas (nueva)
+- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0 a v4.2.0)
 -->
 
 # Truck on Rute Constitution
@@ -25,7 +24,9 @@ Informe de sincronización (Sync Impact Report)
 
 También en la Fase 4 (spec 008): un aviso de privacidad que explica qué datos personales se piden, para qué y cómo pedir que se corrijan o borren. Se acepta al crear la cuenta, se puede leer desde el menú de la app y está en el panel web en `/privacidad`.
 
-Siguen fuera de alcance: carrito con motores, panel solar, MPU6050, AHT20-BMP280, tiempo estimado de llegada (ETA), colores de la ruta según dónde ya pasó el camión (pendiente, se hará en otra spec), notificaciones push con Firebase, varios camiones a la vez en el mapa del ciudadano y nube. Agregar cualquiera de estos requiere una nueva enmienda y preguntar al equipo antes de escribir código.
+**Fase 5 (spec 009):** el administrador dibuja en el mapa del panel web el camino de cada ruta (una línea con puntos). La app y el panel muestran esa línea en verde y pintan de gris la parte que el camión ya recorrió en el recorrido en curso. Si una calle está bloqueada, el administrador dibuja un desvío para ese recorrido; el chofer lo ve en su pantalla con un aviso y la ruta normal regresa al terminar el recorrido. El gris y el ámbar del desvío se usan solo en el mapa.
+
+Siguen fuera de alcance: carrito con motores, panel solar, MPU6050, AHT20-BMP280, tiempo estimado de llegada (ETA), notificaciones push con Firebase, varios camiones a la vez en el mapa del ciudadano y nube. Agregar cualquiera de estos requiere una nueva enmienda y preguntar al equipo antes de escribir código.
 
 ### II. Tres partes separadas y un contrato
 
@@ -72,5 +73,6 @@ La validación y las rutas de la API tienen tests con `node --test`. Cada etapa 
 | 4.0.0 | 2026-11-25 | MAJOR | El equipo, al recorrer la v2.9 el 2026-11-24, dijo que la app "se ve muy acartonada y aburrida" y pidió un diseño más llamativo. Aprobó la maqueta del rediseño (Login, Inicio, Chofer y Perfil) y pidió mantener los verdes. Se redefine el principio III: se conservan colores y logo, y se permite cambiar acomodo, tipografía y animaciones (spec 006). La enmienda se hizo antes de escribir el código. |
 | 4.1.0 | 2026-11-25 | MINOR | El equipo pidió el 2026-11-25 "un mini juego tipo memorama para los usuarios" que enseñe los tipos de residuos y su clasificación. Se agrega la Fase 4 al principio I (spec 007). No cambia la API ni el panel web. La enmienda se hizo antes de escribir el código. |
 | 4.2.0 | 2026-11-27 | MINOR | El equipo pidió el 2026-11-26 "meterle las políticas de privacidad". La app pide datos personales al registrarse, así que se agrega el aviso de privacidad (Ley Federal de Protección de Datos Personales en Posesión de los Particulares) a la Fase 4 y una regla en el principio IV (spec 008). La enmienda se hizo antes de escribir el código. |
+| 4.3.0 | 2026-11-27 | MINOR | El equipo pidió el 2026-11-27 que el mapa pinte de gris por donde ya pasó el camión, que el administrador dibuje las rutas y que pueda marcar un desvío cuando haya un bloqueo. Se agrega la Fase 5 al principio I y se quita de "fuera de alcance" el pintado de la ruta (spec 009). La enmienda se hizo antes de escribir el código. |
 
-**Version**: 4.2.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-27
+**Version**: 4.3.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-27

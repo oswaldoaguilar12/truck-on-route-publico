@@ -457,6 +457,27 @@ private fun HojaCamion(usuario: Usuario, datos: DatosCamion, estado: EstadoCamio
             }
         }
 
+        // --- Versión 2.13 (spec 009): cuánto camino lleva el camión y, si hay, el desvío ---
+        datos.enCurso?.let { rec ->
+            if (!rec.motivoDesvio.isNullOrBlank()) {
+                AvisoDesvio("El camión cambió su ruta", "${rec.motivoDesvio}. Sigue la línea amarilla del mapa.", Modifier.rebote(rec.motivoDesvio))
+            }
+            if (rec.trazo.isNotEmpty()) {
+                val fraccion by animateFloatAsState(rec.fraccion, label = "camino")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${rec.ruta} · ${rec.camion}", fontSize = 13.sp, color = TextoGrisTor)
+                    LinearProgressIndicator(
+                        progress = { fraccion },
+                        modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(50)),
+                        color = GreenMain,
+                        trackColor = Color(0xFFE6EBE8)
+                    )
+                    Text("${(rec.fraccion * 100).toInt()}% del camino recorrido", fontSize = 13.sp, color = TextoGrisTor)
+                    LeyendaMapa(conDesvio = rec.desvio.isNotEmpty())
+                }
+            }
+        }
+
         if (usuario.rol == "administrador") {
             FilaAviso(Icons.Default.AdminPanelSettings, "Eres administrador", "Tu panel está en la computadora: abre /panel en el navegador.", destacado = false)
         }
@@ -472,7 +493,10 @@ private fun HojaCamion(usuario: Usuario, datos: DatosCamion, estado: EstadoCamio
             avisos.forEachIndexed { i, a ->
                 // El más nuevo rebota cuando llega (FR-616)
                 val efecto = if (i == 0) Modifier.rebote(a.id) else Modifier.entradaSuave(retrasoMs = i * 60)
-                FilaAviso(Icons.Default.Notifications, a.titulo, a.mensaje, destacado = i == 0, modifier = efecto)
+                // v2.13 (FR-912): el aviso de desvío lleva el ícono de alerta en ámbar
+                val desvio = a.tipo == "desvio"
+                FilaAviso(if (desvio) Icons.Default.Warning else Icons.Default.Notifications, a.titulo, a.mensaje,
+                    destacado = i == 0, modifier = efecto, colorIcono = if (desvio) AmbarDesvioTor else GreenMain)
             }
         }
 
@@ -524,14 +548,15 @@ private fun FilaAviso(
     titulo: String,
     texto: String,
     destacado: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    colorIcono: Color = GreenMain // v2.13: ámbar para el aviso de desvío
 ) {
     Row(
         modifier.fillMaxWidth().background(if (destacado) VerdeClaroTor else FondoTor, RoundedCornerShape(18.dp)).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(40.dp).background(if (destacado) GreenMain else Color.White, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(icono, null, tint = if (destacado) Color.White else GreenMain, modifier = Modifier.size(20.dp))
+        Box(Modifier.size(40.dp).background(if (destacado) colorIcono else Color.White, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icono, null, tint = if (destacado) Color.White else colorIcono, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {

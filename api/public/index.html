@@ -56,6 +56,18 @@
   #usuario { font-size: 13px; opacity: .9; }
   #salir { background: rgba(255,255,255,.18); color: #fff; border: 0; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 600; }
   @media (max-width: 900px) { .admin { grid-template-columns: 1fr; } }
+  /* v2.13 (spec 009): ventana para dibujar el camino o el desvío */
+  #dibujo { position: fixed; inset: 0; background: rgba(15,30,20,.45); display: none; align-items: center; justify-content: center; z-index: 1500; }
+  #dibujo .caja { width: 900px; max-width: 96vw; display: flex; flex-direction: column; gap: 10px; }
+  #dibujo label { font-size: 13px; color: var(--gris); }
+  #d-mapa { height: 460px; border-radius: 14px; cursor: crosshair; }
+  .fila { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn-borde { background: #fff; color: var(--verde-osc); border: 1px solid #cfe3d3; padding: 9px 14px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .btn-ambar { background: #fff; color: #B45309; border: 1px solid #F5D9A8; padding: 4px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .btn-mini { background: #fff; color: var(--verde-osc); border: 1px solid #cfe3d3; padding: 4px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .desvio-chip { background: #FEF3C7; color: #B45309; }
+  .leyenda { display: flex; gap: 14px; font-size: 12px; color: var(--gris); margin-top: 8px; flex-wrap: wrap; }
+  .leyenda i { display: inline-block; width: 22px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
 </style>
 </head>
 <body>
@@ -94,7 +106,8 @@
     <div class="tarjeta"><span>Distancia recorrida</span><b id="t-dist">—</b></div>
     <div class="tarjeta"><span>Puntos recibidos · datos en</span><b id="t-puntos">—</b></div>
   </section>
-  <section class="caja"><h2>¿Dónde está el camión?</h2><div id="mapa"></div></section>
+  <section class="caja"><h2>¿Dónde está el camión?</h2><div id="mapa"></div>
+    <div class="leyenda"><span><i style="background:#9AA3A0"></i>Ya pasó</span><span><i style="background:#019B43"></i>Falta</span><span><i style="background:repeating-linear-gradient(90deg,#E8A317 0 6px,transparent 6px 10px)"></i>Desvío</span><span id="t-avance"></span></div></section>
   <aside class="lateral">
     <div class="caja">
       <h2>Últimos puntos</h2>
@@ -121,7 +134,7 @@
     <div class="msg" id="r-msg"></div>
   </form>
   <div class="caja"><h2>Recorridos</h2>
-    <table><thead><tr><th>Fecha</th><th>Camión</th><th>Chofer</th><th>Ruta</th><th>Estado</th></tr></thead><tbody id="t-recorridos"></tbody></table>
+    <table><thead><tr><th>Fecha</th><th>Camión</th><th>Chofer</th><th>Ruta</th><th>Estado</th><th></th></tr></thead><tbody id="t-recorridos"></tbody></table>
   </div>
 </section>
 
@@ -167,7 +180,7 @@
     <div class="msg" id="ru-msg"></div>
   </form>
   <div class="caja"><h2>Rutas</h2>
-    <table><thead><tr><th>Ruta</th><th>Colonias</th><th>Horario</th></tr></thead><tbody id="t-rutas"></tbody></table>
+    <table><thead><tr><th>Ruta</th><th>Colonias</th><th>Horario</th><th>Camino</th></tr></thead><tbody id="t-rutas"></tbody></table>
   </div>
 </section>
 
@@ -190,6 +203,24 @@
     <table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Colonia</th><th></th></tr></thead><tbody id="t-usuarios"></tbody></table>
   </div>
 </section>
+<!-- v2.13 (spec 009, FR-901, FR-902, FR-908): dibujar el camino de una ruta o un desvío -->
+<div id="dibujo">
+  <div class="caja">
+    <h2 id="d-titulo">Dibujar camino</h2>
+    <small style="color:#6b7280" id="d-ayuda">Da clic en el mapa sobre las calles, en el orden en que pasa el camión.</small>
+    <label id="d-motivo-caja" style="display:none">Motivo del desvío (lo verán el chofer y los ciudadanos)<input id="d-motivo" maxlength="120" placeholder="Calle Hidalgo cerrada por obra"></label>
+    <div id="d-mapa"></div>
+    <div class="fila">
+      <button class="btn-borde" type="button" id="d-deshacer">Deshacer punto</button>
+      <button class="btn-borde" type="button" id="d-borrar">Borrar todo</button>
+      <span id="d-puntos" style="color:#6b7280;font-size:13px">0 puntos</span>
+      <span style="margin-left:auto"></span>
+      <button class="btn-borde" type="button" id="d-cancelar">Cancelar</button>
+      <button class="btn" type="button" id="d-guardar">Guardar camino</button>
+    </div>
+    <div class="msg" id="d-msg"></div>
+  </div>
+</div>
 <script>
   const API = location.origin;
   const mapa = L.map('mapa').setView([20.1767, -98.0527], 15);
@@ -199,6 +230,11 @@
   const icono = L.icon({ iconUrl: 'camion.png', iconSize: [56, 56], iconAnchor: [28, 40] });
   const marcador = L.marker([20.1767, -98.0527], { icon: icono }).addTo(mapa);
   const recorrido = L.polyline([], { color: '#019B43', weight: 5, opacity: .75 }).addTo(mapa);
+  // v2.13 (FR-906): camino dibujado; gris lo que ya pasó, verde lo que falta y ámbar punteado el desvío
+  const faltaLinea = L.polyline([], { color: '#019B43', weight: 7, opacity: .9 }).addTo(mapa);
+  const pasoLinea = L.polyline([], { color: '#9AA3A0', weight: 7, opacity: .95 }).addTo(mapa);
+  const desvioLinea = L.polyline([], { color: '#E8A317', weight: 6, dashArray: '10 8' }).addTo(mapa);
+  marcador.setZIndexOffset(1000);
   let centrado = false;
 
   const hora = (iso) => new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -209,6 +245,7 @@
         fetch(`${API}/estadisticas`).then((r) => r.json()),
         fetch(`${API}/ubicacion/historial?limite=100`).then((r) => r.json()),
       ]);
+      pintarCamino(hist.at(-1)?.camion);
       const estado = document.getElementById('estado');
       if (!hist.length) {
         estado.textContent = 'Sin ubicación disponible';
@@ -231,6 +268,24 @@
     } catch {
       document.getElementById('estado').textContent = 'API apagada';
     }
+  }
+
+  // Busca el recorrido en curso del camión que se ve en el mapa y pinta su camino
+  async function pintarCamino(clave) {
+    try {
+      const enCurso = await fetch(`${API}/recorridos/en-curso`).then((r) => r.json());
+      const rec = enCurso.find((x) => x.camion === clave) || enCurso[0];
+      const trazo = rec?.trazo || [];
+      const avance = rec?.avance || 0;
+      // FR-907: sin camino dibujado se ve como antes (solo el historial verde)
+      recorrido.setStyle({ opacity: trazo.length ? 0 : .75 });
+      pasoLinea.setLatLngs(avance ? trazo.slice(0, avance) : []);
+      faltaLinea.setLatLngs(trazo.slice(Math.max(0, avance - 1)));
+      desvioLinea.setLatLngs(rec?.desvio || []);
+      document.getElementById('t-avance').textContent = trazo.length
+        ? `${rec.ruta}: ${Math.round((avance / trazo.length) * 100)}% recorrido` + (rec.desvio ? ` · Desvío: ${rec.motivoDesvio}` : '')
+        : '';
+    } catch { /* si falla, el mapa sigue como antes */ }
   }
 
   async function buscar() {
@@ -310,8 +365,12 @@
       ]);
       $('t-camiones').innerHTML = camiones.map((c) => `<tr><td><b>${esc(c.clave)}</b></td><td>${esc(c.placas)}</td><td>${esc(c.modelo)}</td><td><button class="btn-sec" data-borrar-camion="${c.id}">Quitar</button></td></tr>`).join('') || '<tr><td colspan="4">Sin camiones</td></tr>';
       $('t-choferes').innerHTML = choferes.map((c) => `<tr><td>${esc(c.nombre)}</td><td>${esc(c.correo)}</td><td>${esc(c.telefono)}</td></tr>`).join('') || '<tr><td colspan="3">Sin choferes</td></tr>';
-      $('t-rutas').innerHTML = rutas.map((r) => `<tr><td><b>${esc(r.nombre)}</b></td><td>${esc(r.colonias.join(' → '))}</td><td>${esc(r.horario)}</td></tr>`).join('') || '<tr><td colspan="3">Sin rutas</td></tr>';
-      $('t-recorridos').innerHTML = recorridos.map((r) => `<tr><td>${fechaHora(r.fecha)}</td><td>${esc(r.camion)}</td><td>${esc(r.chofer)}</td><td>${esc(r.ruta)}</td><td><span class="chip estado-${r.estado}">${ESTADOS[r.estado]}</span></td></tr>`).join('') || '<tr><td colspan="5">Sin recorridos</td></tr>';
+      $('t-rutas').innerHTML = rutas.map((r) => `<tr><td><b>${esc(r.nombre)}</b></td><td>${esc(r.colonias.join(' → '))}</td><td>${esc(r.horario)}</td><td><button class="btn-mini" data-trazo="${r.id}">${r.trazo?.length ? 'Editar camino' : 'Dibujar camino'}</button></td></tr>`).join('') || '<tr><td colspan="4">Sin rutas</td></tr>';
+      rutasCache = rutas;
+      $('t-recorridos').innerHTML = recorridos.map((r) => `<tr><td>${fechaHora(r.fecha)}</td><td>${esc(r.camion)}</td><td>${esc(r.chofer)}</td><td>${esc(r.ruta)}</td><td><span class="chip estado-${r.estado}">${ESTADOS[r.estado]}</span>${r.desvio ? ' <span class="chip desvio-chip">Con desvío</span>' : ''}</td><td>${r.estado !== 'en_curso' ? '' : r.desvio
+        ? `<button class="btn-ambar" data-quitar-desvio="${r.id}">Quitar desvío</button>`
+        : `<button class="btn-ambar" data-desvio="${r.id}">Desvío</button>`}</td></tr>`).join('') || '<tr><td colspan="6">Sin recorridos</td></tr>';
+      recorridosCache = recorridos;
       $('t-mensajes').innerHTML = mensajes.map((m) => `<tr><td>${fechaHora(m.fecha)}</td><td>${esc(m.para)}</td><td>${esc(m.texto)}</td></tr>`).join('') || '<tr><td colspan="3">Sin mensajes</td></tr>';
       $('t-usuarios').innerHTML = usuarios.map((u) => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.correo)}</td><td><span class="chip rol-${u.rol}">${ROLES[u.rol]}</span></td><td>${esc(u.colonia)}</td><td>${u.rol === 'administrador' ? '' : `<button class="btn-sec" data-borrar-usuario="${u.id}">Borrar</button>`}</td></tr>`).join('');
       $('res-texto').innerHTML = `<p><b>${resumen.camiones}</b> camiones · <b>${resumen.choferes}</b> choferes · <b>${resumen.ciudadanos}</b> ciudadanos</p><p><b>${resumen.recorridosHoy}</b> recorridos hoy · <b>${resumen.enRuta}</b> en ruta ahora</p>`;
@@ -358,6 +417,72 @@
   $('ru-elegidas').addEventListener('click', (e) => { const i = e.target.dataset.quitar; if (i !== undefined) { elegidas.splice(Number(i), 1); pintarColonias(); opcionesColonias(); } });
   $('ru-buscar').addEventListener('input', opcionesColonias);
   pintarColonias(); opcionesColonias();
+
+  // ===================== Versión 2.13 (spec 009): dibujar camino y desvío =====================
+  let rutasCache = [], recorridosCache = [];
+  let dMapa = null, dLinea = null, dGuia = null, dPuntos = [], dModo = null, dId = null;
+  const capa = () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri, HERE, Garmin, © OpenStreetMap contributors' });
+
+  function pintarDibujo() {
+    dLinea.setLatLngs(dPuntos);
+    $('d-msg').textContent = '';
+    $('d-puntos').textContent = `${dPuntos.length} ${dPuntos.length === 1 ? 'punto' : 'puntos'}`;
+  }
+
+  // modo: 'trazo' (camino de la ruta) o 'desvio' (recorrido en curso)
+  function abrirDibujo(modo, id) {
+    dModo = modo; dId = id;
+    const esDesvio = modo === 'desvio';
+    const rec = esDesvio ? recorridosCache.find((x) => String(x.id) === String(id)) : null;
+    const ruta = esDesvio ? rutasCache.find((x) => x.nombre === rec?.ruta) : rutasCache.find((x) => String(x.id) === String(id));
+    $('d-titulo').textContent = esDesvio ? `Desvío por bloqueo · ${rec?.ruta || ''} (${rec?.camion || ''})` : `Camino de la ${ruta?.nombre || 'ruta'}`;
+    $('d-ayuda').textContent = esDesvio
+      ? 'Dibuja por dónde debe pasar el camión ahora. La línea gris es el camino normal.'
+      : 'Da clic en el mapa sobre las calles, en el orden en que pasa el camión.';
+    $('d-motivo-caja').style.display = esDesvio ? 'block' : 'none';
+    $('d-motivo').value = '';
+    $('d-guardar').textContent = esDesvio ? 'Guardar desvío' : 'Guardar camino';
+    $('d-msg').textContent = '';
+    $('dibujo').style.display = 'flex';
+    if (!dMapa) {
+      dMapa = L.map('d-mapa').setView(marcador.getLatLng(), 16);
+      capa().addTo(dMapa);
+      dGuia = L.polyline([], { color: '#9AA3A0', weight: 5, opacity: .8 }).addTo(dMapa);
+      dLinea = L.polyline([], { color: '#019B43', weight: 6 }).addTo(dMapa);
+      dMapa.on('click', (e) => { dPuntos.push([Number(e.latlng.lat.toFixed(6)), Number(e.latlng.lng.toFixed(6))]); pintarDibujo(); });
+    }
+    setTimeout(() => dMapa.invalidateSize(), 50);
+    dLinea.setStyle(esDesvio ? { color: '#E8A317', dashArray: '10 8' } : { color: '#019B43', dashArray: null });
+    // En el desvío se ve el camino normal como guía; al editar un camino se carga el que ya existía
+    dGuia.setLatLngs(esDesvio ? (ruta?.trazo || []) : []);
+    dPuntos = esDesvio ? [] : [...(ruta?.trazo || [])];
+    pintarDibujo();
+    const ver = dPuntos.length ? dPuntos : (esDesvio && ruta?.trazo?.length ? ruta.trazo : null);
+    if (ver) setTimeout(() => dMapa.fitBounds(ver, { padding: [30, 30] }), 80);
+  }
+  const cerrarDibujo = () => { $('dibujo').style.display = 'none'; };
+
+  $('d-deshacer').addEventListener('click', () => { dPuntos.pop(); pintarDibujo(); });
+  $('d-borrar').addEventListener('click', () => { dPuntos = []; pintarDibujo(); });
+  $('d-cancelar').addEventListener('click', cerrarDibujo);
+  $('d-guardar').addEventListener('click', async () => {
+    if (dPuntos.length < 2) return aviso('d-msg', 'Dibuja al menos 2 puntos en el mapa', false);
+    try {
+      if (dModo === 'trazo') await api('PUT', `/admin/rutas/${dId}/trazo`, { trazo: dPuntos });
+      else await api('PUT', `/admin/recorridos/${dId}/desvio`, { trazo: dPuntos, motivo: $('d-motivo').value });
+      cerrarDibujo(); cargarTodo(); actualizar();
+    } catch (err) { aviso('d-msg', err.message, false); }
+  });
+
+  document.addEventListener('click', async (e) => {
+    const d = e.target.dataset;
+    if (d.trazo) abrirDibujo('trazo', d.trazo);
+    if (d.desvio) abrirDibujo('desvio', d.desvio);
+    if (d.quitarDesvio) {
+      if (!confirm('¿Quitar el desvío? El chofer volverá a la ruta normal.')) return;
+      try { await api('DELETE', `/admin/recorridos/${d.quitarDesvio}/desvio`); cargarTodo(); actualizar(); } catch (err) { alert(err.message); }
+    }
+  });
 
   // Si ya había sesión en esta pestaña, se revisa que siga válida
   if (token) fetch(API + '/sesion', { headers: { Authorization: 'Bearer ' + token } })

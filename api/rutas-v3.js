@@ -3,6 +3,7 @@
 
 const express = require('express');
 const { contrasenaCorrecta, nuevoToken } = require('./seguridad');
+const { trazoValido, densificar, avanceEnTrazo } = require('./geo');
 
 const DURACION_SESION_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
 // Misma regla que la app (data/ValidarCorreo.kt, spec 003)
@@ -10,7 +11,7 @@ const CORREO = /^[A-Za-z0-9_%+-]+(\.[A-Za-z0-9_%+-]+)*@[A-Za-z0-9]([A-Za-z0-9-]*
 
 const texto = (v) => (typeof v === 'string' ? v.trim() : '');
 
-function crearRutasV3(datos) {
+function crearRutasV3(datos, { historialDe = () => [] } = {}) {
   const r = express.Router();
   const sesiones = new Map(); // token -> { usuarioId, vence }
 
@@ -127,6 +128,43 @@ function crearRutasV3(datos) {
     res.status(201).json(datos.crearRuta({ nombre, colonias, horario: req.body.horario }));
   });
 
+  // v2.13 (spec 009, FR-903): el administrador guarda el camino dibujado de una ruta
+  r.put('/admin/rutas/:id/trazo', admin, (req, res) => {
+    const ruta = datos.buscarRuta(req.params.id);
+    if (!ruta) return res.status(404).json({ error: 'No existe esa ruta' });
+    const trazo = req.body?.trazo;
+    if (!trazoValido(trazo)) return res.status(400).json({ error: 'Dibuja al menos 2 puntos en el mapa' });
+    res.json(datos.guardarTrazo(ruta, trazo));
+  });
+
+  // v2.13 (FR-908): desvío por bloqueo en un recorrido en curso; avisa al chofer y a los ciudadanos
+  r.put('/admin/recorridos/:id/desvio', admin, (req, res) => {
+    const rec = datos.buscarRecorrido(req.params.id);
+    if (!rec) return res.status(404).json({ error: 'No existe ese recorrido' });
+    if (rec.estado !== 'en_curso') return res.status(400).json({ error: 'Solo se puede desviar un recorrido en curso' });
+    const trazo = req.body?.trazo;
+    const motivo = texto(req.body?.motivo);
+    if (!trazoValido(trazo)) return res.status(400).json({ error: 'Dibuja al menos 2 puntos en el mapa' });
+    if (!motivo) return res.status(400).json({ error: 'Escribe el motivo del desvío' });
+    datos.guardarDesvio(rec, trazo, motivo);
+    const det = datos.detalle(rec);
+    datos.crearMensaje({ deId: req.usuario.id, paraId: rec.choferId, texto: `Ruta cambiada por bloqueo: ${motivo}. Sigue la línea amarilla del mapa.` });
+    // FR-912: los ciudadanos se enteran del cambio
+    datos.crearAviso({
+      tipo: 'desvio', recorridoId: rec.id, camion: det.camion, ruta: det.ruta, colonias: det.colonias,
+      titulo: 'El camión cambió su ruta',
+      mensaje: `${det.ruta} (${det.camion}): ${motivo}`,
+    });
+    res.json(det);
+  });
+
+  r.delete('/admin/recorridos/:id/desvio', admin, (req, res) => {
+    const rec = datos.buscarRecorrido(req.params.id);
+    if (!rec) return res.status(404).json({ error: 'No existe ese recorrido' });
+    datos.guardarDesvio(rec, null);
+    res.json(datos.detalle(rec));
+  });
+
   r.get('/admin/recorridos', admin, (req, res) => res.json([...datos.d.recorridos].reverse().map(datos.detalle)));
   r.post('/admin/recorridos', admin, (req, res) => {
     const { camionId, choferId, rutaId } = req.body || {};
@@ -206,7 +244,15 @@ function crearRutasV3(datos) {
   r.get('/recorridos/en-curso', (req, res) => {
     res.json(datos.d.recorridos.filter((x) => x.estado === 'en_curso').map((x) => {
       const det = datos.detalle(x);
-      return { id: det.id, camion: det.camion, ruta: det.ruta, colonias: det.colonias, inicio: det.inicio };
+      // v2.13 (FR-904): camino de la ruta (con puntos cada 20 m) y cuántos puntos ya recorrió
+      const trazo = det.trazo.length >= 2 ? densificar(det.trazo) : [];
+      const desde = Date.parse(det.inicio) || 0;
+      const ubicaciones = historialDe(det.camion).filter((u) => Date.parse(u.fecha) >= desde);
+      return {
+        id: det.id, camion: det.camion, ruta: det.ruta, colonias: det.colonias, inicio: det.inicio,
+        trazo, avance: trazo.length ? avanceEnTrazo(trazo, ubicaciones) : 0,
+        desvio: det.desvio || null, motivoDesvio: det.motivoDesvio || null,
+      };
     }));
   });
 

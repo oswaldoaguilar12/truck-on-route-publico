@@ -25,6 +25,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -354,4 +356,59 @@ fun Modifier.rebote(clave: Any?): Modifier {
         escala.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMediumLow))
     }
     return this.graphicsLayer { scaleX = escala.value; scaleY = escala.value }
+}
+
+
+// ---------------------------------------------------------------------------
+// Versión 2.13 (spec 009): rutas dibujadas
+// ---------------------------------------------------------------------------
+val GrisPasoTor = Color(0xFF9AA3A0)   // lo que el camión ya recorrió
+val AmbarDesvioTor = Color(0xFFE8A317) // desvío por bloqueo
+
+// FR-909 y FR-912: aviso ámbar "Ruta cambiada por bloqueo" con el motivo
+@Composable
+fun AvisoDesvio(titulo: String, motivo: String, modifier: Modifier = Modifier) {
+    val forma = RoundedCornerShape(18.dp)
+    Row(
+        modifier.fillMaxWidth()
+            .background(AmarilloFondoTor, forma)
+            .border(1.5.dp, AmbarDesvioTor, forma)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.Warning, null,
+            tint = AmbarDesvioTor, modifier = Modifier.size(26.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(titulo, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = AmarilloTextoTor)
+            Text(motivo, fontSize = 13.sp, color = TextoOscuroTor, lineHeight = 18.sp)
+        }
+    }
+}
+
+// Leyenda de colores del mapa: rayita de color + texto
+@Composable
+fun LeyendaMapa(conDesvio: Boolean, textoPaso: String = "Ya pasó") {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RayaLeyenda(GrisPasoTor, textoPaso)
+        RayaLeyenda(VerdeTor, "Falta")
+        if (conDesvio) RayaLeyenda(AmbarDesvioTor, "Desvío")
+    }
+}
+
+@Composable
+private fun RayaLeyenda(color: Color, texto: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(width = 18.dp, height = 4.dp)
+                .background(color, RoundedCornerShape(2.dp))
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(texto, fontSize = 12.sp, color = TextoGrisTor)
+    }
 }

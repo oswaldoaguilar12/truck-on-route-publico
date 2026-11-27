@@ -33,7 +33,7 @@ function crearApp(opciones = {}) {
   app.use((req, res, next) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
@@ -142,7 +142,8 @@ function crearApp(opciones = {}) {
   });
 
   // Versión 2.8: sesión, administrador, chofer y avisos
-  app.use(crearRutasV3(datos));
+  // v2.13 (spec 009): las rutas v3 leen el historial para pintar de gris lo recorrido
+  app.use(crearRutasV3(datos, { historialDe: (clave) => historiales.get(clave) || [] }));
 
   app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 

@@ -250,6 +250,9 @@ private fun TarjetaRecorrido(rec: Recorrido, ocupado: Boolean, onIniciar: () -> 
                 }
             }
 
+            // Versión 2.13 (spec 009, FR-909): mapa con el camino (gris lo que ya pasó) y el desvío si lo hay
+            if (enCurso) MapaChofer(rec)
+
             when (rec.estado) {
                 "programado" -> BotonPildora("Iniciar ruta", onIniciar, icono = Icons.Default.PlayArrow, habilitado = !ocupado, alto = 60.dp)
                 "en_curso" -> BotonPildora("Terminar ruta", onTerminar, color = RojoTor, icono = Icons.Default.Stop, habilitado = !ocupado, alto = 60.dp)
@@ -275,3 +278,27 @@ private fun leer(iso: String): java.util.Date? {
 
 private fun horaCorta(iso: String) = leer(iso)?.let { SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(it) } ?: ""
 private fun fechaCorta(iso: String) = leer(iso)?.let { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(it) } ?: ""
+
+// Versión 2.13 (spec 009): aviso de desvío y mapa del recorrido en curso del chofer.
+// Usa los mismos datos que Inicio (rememberDatosCamion), pero siguiendo al camión del chofer.
+@Composable
+private fun MapaChofer(rec: Recorrido) {
+    val datos = rememberDatosCamion(camion = rec.camion)
+    val enCurso = datos.enCurso?.takeIf { it.id == rec.id }
+    val motivo = enCurso?.motivoDesvio ?: rec.motivoDesvio
+    var seguir by remember { mutableStateOf(true) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (!motivo.isNullOrBlank()) {
+            AvisoDesvio("Ruta cambiada por bloqueo", "$motivo. Sigue la línea amarilla.", Modifier.rebote(motivo))
+        }
+        if (enCurso != null && (enCurso.trazo.isNotEmpty() || enCurso.desvio.isNotEmpty())) {
+            MapaCamion(
+                datos = datos,
+                seguirCamion = seguir,
+                onMoverMapa = { seguir = false },
+                modifier = Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(18.dp))
+            )
+            LeyendaMapa(conDesvio = enCurso.desvio.isNotEmpty(), textoPaso = "Ya pasaste")
+        }
+    }
+}

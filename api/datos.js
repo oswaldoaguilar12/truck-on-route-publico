@@ -108,6 +108,21 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
     return r;
   }
 
+  // v2.13 (spec 009, FR-903): camino dibujado por el administrador
+  function guardarTrazo(ruta, trazo) {
+    ruta.trazo = trazo;
+    guardar();
+    return ruta;
+  }
+
+  // v2.13 (FR-908): desvío del recorrido en curso (null lo quita)
+  function guardarDesvio(recorrido, trazo, motivo) {
+    if (trazo) { recorrido.desvio = trazo; recorrido.motivoDesvio = motivo; }
+    else { delete recorrido.desvio; delete recorrido.motivoDesvio; }
+    guardar();
+    return recorrido;
+  }
+
   // ---------- Recorridos ----------
   function buscarRecorrido(id) {
     return d.recorridos.find((r) => r.id === Number(id)) || null;
@@ -127,7 +142,12 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
   function cambiarEstado(recorrido, estado) {
     recorrido.estado = estado;
     if (estado === 'en_curso') recorrido.inicio = new Date().toISOString();
-    if (estado === 'terminado') recorrido.fin = new Date().toISOString();
+    if (estado === 'terminado') {
+      recorrido.fin = new Date().toISOString();
+      // v2.13 (FR-910): al terminar se quita el desvío; la ruta normal no cambia
+      delete recorrido.desvio;
+      delete recorrido.motivoDesvio;
+    }
     guardar();
     return recorrido;
   }
@@ -137,7 +157,7 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
     const camion = buscarCamion(r.camionId);
     const chofer = buscarUsuario(r.choferId);
     const ruta = buscarRuta(r.rutaId);
-    return { ...r, camion: camion?.clave || '—', chofer: chofer?.nombre || '—', ruta: ruta?.nombre || '—', colonias: ruta?.colonias || [], horario: ruta?.horario || '' };
+    return { ...r, camion: camion?.clave || '—', chofer: chofer?.nombre || '—', ruta: ruta?.nombre || '—', colonias: ruta?.colonias || [], horario: ruta?.horario || '', trazo: ruta?.trazo || [] };
   }
 
   // ---------- Mensajes y avisos ----------
@@ -172,7 +192,7 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
   return {
     d, guardar, publico, buscarPorCorreo, buscarUsuario, crearUsuario, borrarUsuario,
     buscarCamion, crearCamion, borrarCamion, buscarRuta, crearRuta,
-    buscarRecorrido, crearRecorrido, cambiarEstado, detalle, crearMensaje, crearAviso, sembrar,
+    buscarRecorrido, crearRecorrido, cambiarEstado, guardarTrazo, guardarDesvio, detalle, crearMensaje, crearAviso, sembrar,
   };
 }
 
