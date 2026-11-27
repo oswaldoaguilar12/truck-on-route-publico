@@ -1,0 +1,102 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#E3E8E5;font-family:Poppins,sans-serif;color:#1C2B22;padding:30px;display:flex;gap:30px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:12px}.cap{font-weight:600;font-size:17px;color:#0A7D2C}
+.tel{width:390px;height:844px;border-radius:44px;overflow:hidden;background:#F5F7F6;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.18);border:8px solid #1C2B22;display:flex;flex-direction:column}
+.enc{background:linear-gradient(120deg,#019B43,#0A7D2C);color:#fff;padding:26px 20px 22px;border-radius:0 0 28px 28px}
+.enc small{opacity:.85;font-size:13px}.enc h1{margin:2px 0 0;font-size:22px}
+.atras{display:inline-flex;width:40px;height:40px;border-radius:20px;background:rgba(255,255,255,.18);align-items:center;justify-content:center;font-size:20px;margin-right:12px}
+.filtros{display:flex;gap:8px;padding:14px 16px 4px}.f{padding:6px 14px;border-radius:16px;font-size:12px;font-weight:600;background:#fff;color:#0A7D2C;box-shadow:0 1px 3px rgba(0,0,0,.08)}.f.a{background:#019B43;color:#fff}
+.dia{font-size:12px;color:#5E6B63;font-weight:600;margin:14px 20px 6px}
+.av{display:flex;gap:12px;margin:0 16px 8px;padding:12px;border-radius:18px;background:#fff;align-items:flex-start;position:relative}
+.av.nuevo{background:#E8F6EE}
+.ic{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+.av b{font-size:14px;display:block}.av p{margin:2px 0 0;font-size:12px;color:#5E6B63;line-height:1.4}
+.hora{position:absolute;right:14px;top:12px;font-size:11px;color:#5E6B63}
+.punto{position:absolute;right:16px;bottom:14px;width:9px;height:9px;border-radius:5px;background:#019B43}
+.burbuja{max-width:76%;padding:9px 12px;border-radius:16px;font-size:13px;line-height:1.4;margin:4px 0}
+.yo{align-self:flex-end;background:#019B43;color:#fff;border-bottom-right-radius:4px}
+.el{align-self:flex-start;background:#fff;border-bottom-left-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.t{font-size:10px;opacity:.7;margin-top:2px;text-align:right}
+.audio{display:flex;align-items:center;gap:8px;min-width:190px}.play{width:30px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.onda{flex:1;height:22px;display:flex;align-items:center;gap:2px}.onda i{display:block;width:3px;border-radius:2px}
+.rapidos{display:flex;gap:6px;overflow:hidden;padding:8px 12px 4px}.r{white-space:nowrap;padding:7px 12px;border-radius:16px;font-size:12px;font-weight:600;border:1.5px solid #019B43;color:#0A7D2C;background:#fff}
+.r.rojo{border-color:#B91C1C;color:#B91C1C}
+.barra{display:flex;gap:8px;align-items:center;padding:8px 12px 16px}
+.redondo{width:42px;height:42px;border-radius:21px;display:flex;align-items:center;justify-content:center;font-size:18px;background:#E8F6EE;color:#0A7D2C;flex:none}
+.pc{width:820px;height:844px;border-radius:16px;overflow:hidden;background:#F3EFE8;box-shadow:0 20px 50px rgba(0,0,0,.18);border:1px solid #cfd6d2;display:flex;flex-direction:column}
+.url{background:#ECEFEE;padding:10px 14px;display:flex;gap:8px;align-items:center;font-size:13px;border-bottom:1px solid #d5dbd8}
+.url .d{width:11px;height:11px;border-radius:6px;flex:none}.url .u{flex:1;background:#fff;border-radius:16px;padding:6px 14px;color:#5E6B63}
+.tab{padding:7px 14px;border-radius:16px;background:#fff;color:#0A7D2C;font-weight:600;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);position:relative}
+.tab.a{background:#019B43;color:#fff}
+.cont{position:absolute;top:-7px;right:-7px;background:#B91C1C;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px}
+.chofer{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;margin-bottom:6px;font-size:13px}
+.chofer .ini{width:34px;height:34px;border-radius:17px;background:#E8F6EE;color:#0A7D2C;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.num{margin-left:auto;background:#019B43;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 7px}
+</style></head><body>
+
+<!-- 1. Avisos con historial -->
+<div class="col"><div class="cap">1. App: sección Avisos con historial</div><div class="tel">
+<div class="enc"><div style="display:flex;align-items:center"><span class="atras">←</span><div><small>2 sin leer</small><h1>Avisos</h1></div></div></div>
+<div class="filtros"><span class="f a">Todos</span><span class="f">Sin leer · 2</span></div>
+<div class="dia">Hoy</div>
+<div class="av nuevo"><div class="ic" style="background:#FEF3C7">⏱️</div><div style="padding-right:40px"><b>El camión va retrasado</b><p>Ruta Centro: pasará como 30 min tarde por tráfico en el centro.</p></div><span class="hora">9:42</span><span class="punto"></span></div>
+<div class="av nuevo"><div class="ic" style="background:#FEF3C7">⚠️</div><div style="padding-right:40px"><b>El camión cambió su ruta</b><p>Ruta Centro (CAMION-01): Calle Hidalgo cerrada por obra.</p></div><span class="hora">9:15</span><span class="punto"></span></div>
+<div class="av"><div class="ic" style="background:#E8F6EE">🚛</div><div style="padding-right:40px"><b>El camión ya está en ruta</b><p>Ruta Centro (CAMION-01) va por Centro, Zacamila y Cuauhtémoc.</p></div><span class="hora">8:02</span></div>
+<div class="dia">Ayer</div>
+<div class="av"><div class="ic" style="background:#FDE2E2">🚫</div><div style="padding-right:40px"><b>Hoy no pasa el camión</b><p>Ruta Norte: el camión está en mantenimiento. Pasa mañana en su horario.</p></div><span class="hora">7:30</span></div>
+<div class="av"><div class="ic" style="background:#E3EEFB">📢</div><div style="padding-right:40px"><b>Aviso general</b><p>El sábado hay jornada de reciclaje en el parque central.</p></div><span class="hora">18:10</span></div>
+<div style="margin:auto 16px 18px;font-size:11px;color:#5E6B63;text-align:center">Se muestran los avisos de los últimos 7 días</div>
+</div></div>
+
+<!-- 2. Chat del chofer -->
+<div class="col"><div class="cap">2. Chofer: chat con el administrador</div><div class="tel">
+<div class="enc" style="padding-bottom:16px"><div style="display:flex;align-items:center"><span class="atras">←</span><div style="flex:1"><small>Chat</small><h1 style="font-size:19px">Administrador</h1></div><span style="font-size:12px;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:12px">● En línea</span></div></div>
+<div style="flex:1;display:flex;flex-direction:column;padding:12px 14px;overflow:hidden">
+<div style="align-self:center;font-size:11px;color:#5E6B63;background:#ECEFEE;padding:3px 10px;border-radius:10px;margin-bottom:6px">Hoy</div>
+<div class="burbuja el">Hoy no pases por la 5 de Mayo, está cerrada<div class="t">7:40</div></div>
+<div class="burbuja yo" style="background:#B91C1C">⚠️ Falla mecánica<div class="t">10:12</div></div>
+<div class="burbuja yo" style="padding:4px"><div style="width:200px;height:130px;border-radius:12px;background:linear-gradient(135deg,#9aa3a0,#5e6b63);display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px">📷</div><div class="t" style="padding:0 6px 2px">Foto · 10:12</div></div>
+<div class="burbuja yo"><div class="audio"><span class="play" style="background:#fff;color:#019B43">▶</span><span class="onda"><i style="height:8px;background:#fff"></i><i style="height:16px;background:#fff"></i><i style="height:11px;background:#fff"></i><i style="height:20px;background:#fff"></i><i style="height:9px;background:#fff"></i><i style="height:14px;background:#fff"></i><i style="height:18px;background:#fff"></i><i style="height:7px;background:#fff"></i><i style="height:13px;background:#fff"></i><i style="height:17px;background:#fff"></i><i style="height:9px;background:#fff"></i><i style="height:12px;background:#fff"></i></span><span style="font-size:11px">0:14</span></div><div class="t">10:13</div></div>
+<div class="burbuja el"><div class="audio"><span class="play" style="background:#019B43;color:#fff">▶</span><span class="onda"><i style="height:10px;background:#019B43"></i><i style="height:18px;background:#019B43"></i><i style="height:8px;background:#019B43"></i><i style="height:15px;background:#019B43"></i><i style="height:20px;background:#019B43"></i><i style="height:9px;background:#019B43"></i><i style="height:12px;background:#9AA39E"></i><i style="height:16px;background:#9AA39E"></i><i style="height:7px;background:#9AA39E"></i><i style="height:11px;background:#9AA39E"></i></span><span style="font-size:11px;color:#5E6B63">0:09</span></div><div class="t">10:15</div></div>
+<div class="burbuja el">Va, ya mandé al mecánico. Espéralo ahí 👍<div class="t">10:15</div></div>
+<div class="burbuja yo">🌮 Pausa para comer<div class="t">13:05 · Visto</div></div>
+</div>
+<div class="rapidos"><span class="r rojo">⚠️ Falla mecánica</span><span class="r">🛞 Ponchadura</span><span class="r">🚦 Tráfico</span><span class="r">🌮 Pausa</span></div>
+<div class="barra"><span class="redondo">📷</span><div style="flex:1;height:44px;border-radius:22px;background:#fff;border:1px solid #DDE3DF;display:flex;align-items:center;padding:0 16px;font-size:13px;color:#9AA39E">Escribe un mensaje…</div><span class="redondo" style="background:#019B43;color:#fff">🎤</span></div>
+</div></div>
+
+<!-- 3. Panel: chat y avisos -->
+<div class="col"><div class="cap">3. Panel web: chat con choferes y avisos</div><div class="pc">
+<div class="url"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="u">localhost:3000/panel · Chat</span></div>
+<div style="background:linear-gradient(90deg,#019B43,#0A7D2C);color:#fff;padding:14px 22px;border-radius:0 0 18px 18px"><b style="font-size:18px;letter-spacing:1px">TRUCK ON ROUTE</b><div style="font-size:11px;opacity:.85">Panel del administrador · Huauchinango, Puebla</div></div>
+<div style="display:flex;gap:6px;padding:12px 20px;flex-wrap:wrap"><span class="tab">Monitoreo</span><span class="tab">Recorridos</span><span class="tab">Rutas</span><span class="tab a">Chat<span class="cont">3</span></span><span class="tab">Avisos</span><span class="tab">Usuarios</span></div>
+<div style="display:flex;gap:14px;padding:0 20px;flex:1;min-height:0">
+<div style="width:230px;background:#fff;border-radius:16px;padding:12px">
+<div style="font-weight:600;color:#0A7D2C;margin-bottom:10px">Choferes</div>
+<div class="chofer" style="background:#E8F6EE"><span class="ini">J</span><div><b>Juan Pérez</b><div style="font-size:11px;color:#B91C1C">⚠️ Falla mecánica</div></div><span class="num">3</span></div>
+<div class="chofer"><span class="ini">R</span><div><b>Rosa Díaz</b><div style="font-size:11px;color:#5E6B63">🚦 Tráfico</div></div></div>
+<div class="chofer"><span class="ini">P</span><div><b>Pedro Luna</b><div style="font-size:11px;color:#5E6B63">Sin mensajes</div></div></div>
+</div>
+<div style="flex:1;background:#fff;border-radius:16px;display:flex;flex-direction:column;overflow:hidden">
+<div style="padding:12px 16px;border-bottom:1px solid #eee;font-weight:600">Juan Pérez · CAMION-01 · Ruta Centro</div>
+<div style="flex:1;background:#F5F7F6;padding:12px 16px;display:flex;flex-direction:column">
+<div class="burbuja yo" style="background:#B91C1C;align-self:flex-start;border-radius:16px 16px 16px 4px">⚠️ Falla mecánica<div class="t">10:12</div></div>
+<div class="burbuja el" style="padding:4px"><div style="width:190px;height:110px;border-radius:12px;background:linear-gradient(135deg,#9aa3a0,#5e6b63);display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px">📷</div><div class="t" style="padding:0 6px 2px">Foto · 10:12</div></div>
+<div class="burbuja el"><div class="audio"><span class="play" style="background:#019B43;color:#fff">▶</span><span class="onda"><i style="height:8px;background:#019B43"></i><i style="height:16px;background:#019B43"></i><i style="height:11px;background:#019B43"></i><i style="height:20px;background:#019B43"></i><i style="height:9px;background:#019B43"></i><i style="height:14px;background:#019B43"></i><i style="height:18px;background:#019B43"></i><i style="height:7px;background:#019B43"></i></span><span style="font-size:11px;color:#5E6B63">0:14</span></div><div class="t">10:13</div></div>
+<div class="burbuja yo" style="border-radius:16px 16px 4px 16px">Va, ya mandé al mecánico. Espéralo ahí 👍<div class="t">10:15</div></div>
+</div>
+<div style="display:flex;gap:8px;padding:10px 12px;border-top:1px solid #eee;align-items:center"><span class="redondo">📷</span><div style="flex:1;height:40px;border-radius:12px;border:1px solid #ccc;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#9AA39E">Escribe la respuesta…</div><span class="redondo">🎤</span><span style="background:#019B43;color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px">Enviar</span></div>
+</div>
+<div style="width:220px;background:#fff;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:12px">
+<div style="font-weight:600;color:#0A7D2C;font-size:14px">Mandar un aviso</div>
+<span style="color:#6b7280">Tipo</span><div style="border:1px solid #ccc;border-radius:10px;padding:8px">⏱️ Va retrasado ▾</div>
+<span style="color:#6b7280">Ruta</span><div style="border:1px solid #ccc;border-radius:10px;padding:8px">Ruta Centro ▾</div>
+<span style="color:#6b7280">Para</span><div style="display:flex;gap:4px"><span class="f a" style="padding:5px 8px">Ciudadanos</span><span class="f" style="padding:5px 8px">Choferes</span><span class="f" style="padding:5px 8px">Todos</span></div>
+<span style="color:#6b7280">Mensaje</span><div style="border:1px solid #ccc;border-radius:10px;padding:8px;height:70px;color:#1C2B22">Pasará como 30 min tarde por tráfico en el centro.</div>
+<span style="background:#019B43;color:#fff;padding:10px;border-radius:12px;font-weight:700;text-align:center">Enviar aviso</span>
+<div style="font-size:11px;color:#6b7280">(Esto va en la pestaña Avisos; aquí se ve junto al chat para la maqueta)</div>
+</div>
+</div><div style="height:20px"></div></div></div>
+</body></html>

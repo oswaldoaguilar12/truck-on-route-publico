@@ -28,7 +28,8 @@ function crearApp(opciones = {}) {
   const datos = crearDatos(opciones.archivoDatos);
   if (datos.sembrar()) console.log('Primera vez: se crearon los datos de ejemplo (ver LEEME.md, "Cuentas de ejemplo").');
 
-  app.use(express.json());
+  // v2.14: 8 MB para que quepan fotos y audios de 5 MB en base64 (spec 010)
+  app.use(express.json({ limit: '8mb' }));
   // Permite que el panel web se abra desde otra dirección (por ejemplo, otro puerto)
   app.use((req, res, next) => {
     res.set('Access-Control-Allow-Origin', '*');

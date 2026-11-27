@@ -161,8 +161,12 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
   }
 
   // ---------- Mensajes y avisos ----------
-  function crearMensaje({ deId, paraId, texto }) {
-    const m = { id: nuevoId(), deId: Number(deId), paraId: Number(paraId), texto: String(texto).trim(), fecha: new Date().toISOString() };
+  // v2.14 (FR-1013): tipo "texto", "rapido", "foto" o "audio"; paraId 0 = la administración
+  function crearMensaje({ deId, paraId, texto, tipo = 'texto', archivo = null }) {
+    const m = {
+      id: nuevoId(), deId: Number(deId), paraId: Number(paraId), tipo,
+      texto: String(texto ?? '').trim(), archivo, fecha: new Date().toISOString(), leido: false,
+    };
     d.mensajes.push(m);
     guardar();
     return m;
@@ -174,6 +178,37 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
     if (d.avisos.length > 200) d.avisos.shift(); // solo los últimos 200
     guardar();
     return a;
+  }
+
+  // ---------- v2.14 (spec 010): fotos y audios del chat ----------
+  const carpetaArchivos = archivo ? path.join(path.dirname(archivo), 'archivos') : path.join(require('os').tmpdir(), 'tor-archivos');
+  const MAX_ARCHIVO = 5 * 1024 * 1024;
+  // El formato se reconoce por los primeros bytes del archivo, no por lo que diga quien lo manda
+  function formato(b) {
+    if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { ext: 'jpg', clase: 'foto' };
+    if (b.subarray(0, 4).toString('hex') === '89504e47') return { ext: 'png', clase: 'foto' };
+    if (b.subarray(4, 8).toString() === 'ftyp') return { ext: 'm4a', clase: 'audio' };
+    if (b.subarray(0, 4).toString('hex') === '1a45dfa3') return { ext: 'webm', clase: 'audio' };
+    if (b.subarray(0, 4).toString() === 'OggS') return { ext: 'ogg', clase: 'audio' };
+    return null;
+  }
+  // Devuelve { nombre } o { error }. clase: "foto" o "audio"
+  function guardarArchivo(base64, clase) {
+    if (typeof base64 !== 'string' || !base64) return { error: 'Falta el archivo' };
+    const b = Buffer.from(base64.replace(/^data:[^,]*,/, ''), 'base64');
+    if (b.length > MAX_ARCHIVO) return { error: 'El archivo pesa más de 5 MB' };
+    const f = formato(b);
+    if (!f || f.clase !== clase) return { error: clase === 'foto' ? 'La foto debe ser JPG o PNG' : 'El audio debe ser M4A, WebM u OGG' };
+    fs.mkdirSync(carpetaArchivos, { recursive: true });
+    const nombre = `${Date.now()}-${require('crypto').randomBytes(6).toString('hex')}.${f.ext}`;
+    fs.writeFileSync(path.join(carpetaArchivos, nombre), b);
+    return { nombre };
+  }
+  // Ruta del archivo en disco, o null si el nombre no es válido
+  function rutaArchivo(nombre) {
+    if (!/^[0-9]+-[0-9a-f]{12}\.(jpg|png|m4a|webm|ogg)$/.test(nombre)) return null;
+    const ruta = path.join(carpetaArchivos, nombre);
+    return fs.existsSync(ruta) ? ruta : null;
   }
 
   // ---------- Datos de ejemplo ----------
@@ -192,7 +227,7 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
   return {
     d, guardar, publico, buscarPorCorreo, buscarUsuario, crearUsuario, borrarUsuario,
     buscarCamion, crearCamion, borrarCamion, buscarRuta, crearRuta,
-    buscarRecorrido, crearRecorrido, cambiarEstado, guardarTrazo, guardarDesvio, detalle, crearMensaje, crearAviso, sembrar,
+    buscarRecorrido, crearRecorrido, cambiarEstado, guardarTrazo, guardarDesvio, detalle, crearMensaje, crearAviso, sembrar, guardarArchivo, rutaArchivo,
   };
 }
 

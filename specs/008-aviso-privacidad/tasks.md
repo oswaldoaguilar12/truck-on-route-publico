@@ -10,4 +10,4 @@
 - [X] T806 App: casilla en `RegistroScreen.kt` y `ApiTor.registrar` con `aceptaAviso` (FR-801, FR-802) — programada 2026-11-27, falta compilar (T808)
 - [X] T807 App: opción "Aviso de privacidad" en el menú de `HomeScreen.kt` (FR-803) — programada 2026-11-27, falta compilar (T808)
 - [X] T808 Compilar en Android Studio sin errores (SC-801) — compiló el 2026-11-27 (equipo, junto con la v2.13)
-- [ ] T809 En el emulador: registrar sin la casilla (no deja) y con la casilla (sí); abrir el aviso desde el registro y el menú; abrir `http://localhost:3000/privacidad` (SC-802, SC-803) — equipo
+- [X] T809 En el emulador: registrar sin la casilla (no deja) y con la casilla (sí); abrir el aviso desde el registro y el menú; abrir `http://localhost:3000/privacidad` (SC-802, SC-803) — probado el 2026-11-27 (equipo): sin casilla no deja; con casilla se creó la cuenta con `avisoAceptado` 2026-11-27T06:47:59Z; el aviso se abrió en la app

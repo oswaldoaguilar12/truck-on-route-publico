@@ -57,6 +57,16 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
     var showHelpDialog by remember { mutableStateOf(false) } // Diálogo Ayuda
     var verAmbiente by remember { mutableStateOf(false) } // v2.11 (spec 007): sección "Cuida tu ambiente"
     var verAviso by remember { mutableStateOf(false) } // v2.12 (spec 008): aviso de privacidad
+    var verAvisos by remember { mutableStateOf(false) } // v2.14 (spec 010): sección Avisos con historial
+    var avisosSinLeer by remember { mutableIntStateOf(0) }
+    val contextoHome = androidx.compose.ui.platform.LocalContext.current
+    // FR-1004: cada 30 s cuenta los avisos de la semana que todavía no se han visto
+    LaunchedEffect(verAvisos) {
+        while (!verAvisos) {
+            avisosSinLeer = contarNoLeidos(ApiTor.avisos(null, dias = 7), Sesion.avisosLeidosHasta(contextoHome))
+            kotlinx.coroutines.delay(30_000)
+        }
+    }
 
     // Versión 2.8: se retiró la clave fija "admin123"; el administrador usa el panel web con su cuenta
 
@@ -100,6 +110,7 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                         selectedTab = 0
                         verAmbiente = false
                         verAviso = false
+                        verAvisos = false
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Home, null) },
@@ -120,9 +131,31 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                     onClick = {
                         verAmbiente = true
                         verAviso = false
+                        verAvisos = false
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.Eco, null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = GreenMain.copy(alpha = 0.14f),
+                        selectedIconColor = GreenDark,
+                        selectedTextColor = GreenDark,
+                        unselectedIconColor = TextoGrisTor
+                    )
+                )
+
+                // Versión 2.14 (spec 010, FR-1001): avisos con historial y cuántos faltan por leer
+                NavigationDrawerItem(
+                    label = { Text("Avisos") },
+                    selected = verAvisos,
+                    onClick = {
+                        verAvisos = true
+                        verAviso = false
+                        verAmbiente = false
+                        scope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Notifications, null) },
+                    badge = { if (avisosSinLeer > 0) Badge(containerColor = GreenMain) { Text("$avisosSinLeer") } },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     colors = NavigationDrawerItemDefaults.colors(
                         selectedContainerColor = GreenMain.copy(alpha = 0.14f),
@@ -139,6 +172,7 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                     onClick = {
                         verAviso = true
                         verAmbiente = false
+                        verAvisos = false
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.PrivacyTip, null) },
@@ -157,6 +191,7 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
                     selected = false,
                     onClick = {
                         showHelpDialog = true
+                        verAvisos = false
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.HelpOutline, null) },
@@ -195,7 +230,8 @@ fun HomeScreen(usuario: Usuario, onLogout: () -> Unit = {}) {
     ) {
         // --- CONTENIDO ---
         // v2.11: mientras "Cuida tu ambiente" está abierta, ocupa toda la pantalla
-        if (verAviso) AvisoPrivacidadScreen(onAtras = { verAviso = false })
+        if (verAvisos) AvisosScreen("ciudadano", cargar = { ApiTor.avisos(null, dias = 7) }, onAtras = { verAvisos = false; avisosSinLeer = 0 })
+        else if (verAviso) AvisoPrivacidadScreen(onAtras = { verAviso = false })
         else if (verAmbiente) CuidaAmbienteScreen(onSalir = { verAmbiente = false }) else run {
             // Versión 2.10 (spec 006): sin encabezado; en Inicio el mapa llega hasta arriba
             // (contentWindowInsets = 0: cada pantalla deja su propio espacio para la barra de estado)
@@ -493,10 +529,9 @@ private fun HojaCamion(usuario: Usuario, datos: DatosCamion, estado: EstadoCamio
             avisos.forEachIndexed { i, a ->
                 // El más nuevo rebota cuando llega (FR-616)
                 val efecto = if (i == 0) Modifier.rebote(a.id) else Modifier.entradaSuave(retrasoMs = i * 60)
-                // v2.13 (FR-912): el aviso de desvío lleva el ícono de alerta en ámbar
-                val desvio = a.tipo == "desvio"
-                FilaAviso(if (desvio) Icons.Default.Warning else Icons.Default.Notifications, a.titulo, a.mensaje,
-                    destacado = i == 0, modifier = efecto, colorIcono = if (desvio) AmbarDesvioTor else GreenMain)
+                // v2.13 (FR-912) y v2.14 (FR-1002): cada tipo de aviso con su ícono y color
+                val e = estiloAviso(a.tipo)
+                FilaAviso(e.icono, a.titulo, a.mensaje, destacado = i == 0, modifier = efecto, colorIcono = e.color)
             }
         }
 

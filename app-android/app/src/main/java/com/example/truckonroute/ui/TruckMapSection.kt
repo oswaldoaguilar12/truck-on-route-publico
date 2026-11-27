@@ -238,7 +238,7 @@ fun MapaCamion(
             }
             if (u != null) {
                 // FR-907: con camino dibujado, el historial verde ya no se dibuja (el gris lo reemplaza)
-                linea.setPoints(if (trazo.isEmpty()) datos.recorrido.map { GeoPoint(it.lat, it.lng) } else emptyList())
+                linea.setPoints(if (trazo.isEmpty()) ultimaVuelta(datos.recorrido).map { GeoPoint(it.lat, it.lng) } else emptyList())
                 if (ultimo.punto == null) {
                     marcador.position = GeoPoint(u.lat, u.lng)
                     pulso.punto = marcador.position
@@ -371,6 +371,25 @@ fun calcularEstado(u: Ubicacion?, cargando: Boolean, ahora: Long): EstadoCamion 
         u.fuente == "gps" -> EstadoCamion("En ruta", "El camión va en ruta", hora, VerdeTruck)
         else -> EstadoCamion("Simulación", "Simulación en curso", hora, Color(0xFF1565C0))
     }
+}
+
+// Sin recorrido en curso solo se dibuja la última vuelta del camión, para que no se encimen
+// las líneas viejas. Se corta hacia atrás donde hay un hueco de más de 2 minutos sin datos
+// o un salto de más de 300 m (cuando la simulación vuelve a empezar).
+fun ultimaVuelta(puntos: List<Ubicacion>): List<Ubicacion> {
+    if (puntos.size < 2) return puntos
+    var inicio = puntos.size - 1
+    while (inicio > 0) {
+        val a = puntos[inicio - 1]
+        val b = puntos[inicio]
+        val ta = leerFecha(a.fecha)?.time
+        val tb = leerFecha(b.fecha)?.time
+        val hueco = ta != null && tb != null && tb - ta > 2 * 60_000
+        val salto = FloatArray(1).also { android.location.Location.distanceBetween(a.lat, a.lng, b.lat, b.lng, it) }[0] > 300f
+        if (hueco || salto) break
+        inicio--
+    }
+    return puntos.subList(inicio, puntos.size)
 }
 
 // La API manda la fecha así: 2026-10-22T06:38:21.828Z (UTC).

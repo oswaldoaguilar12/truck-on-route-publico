@@ -56,6 +56,34 @@
   #usuario { font-size: 13px; opacity: .9; }
   #salir { background: rgba(255,255,255,.18); color: #fff; border: 0; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-weight: 600; }
   @media (max-width: 900px) { .admin { grid-template-columns: 1fr; } }
+  /* v2.14 (spec 010): chat y avisos */
+  nav button { position: relative; }
+  .contador { position: absolute; top: -6px; right: -6px; background: var(--rojo); color: #fff; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 6px; display: none; }
+  #v-chat { grid-template-columns: 260px 1fr; }
+  .lista-ch { display: flex; flex-direction: column; gap: 4px; }
+  .ch { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 12px; cursor: pointer; font-size: 13px; }
+  .ch:hover { background: #F3F4F6; } .ch.activa { background: #E5F4E4; }
+  .ch .ini { width: 34px; height: 34px; border-radius: 17px; background: #E5F4E4; color: var(--verde-osc); font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+  .ch small { display: block; color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  .ch .num { margin-left: auto; background: var(--verde); color: #fff; border-radius: 10px; font-size: 11px; font-weight: 700; padding: 1px 7px; }
+  .conv { display: flex; flex-direction: column; height: 560px; padding: 0; overflow: hidden; }
+  .conv h2 { padding: 14px 16px 10px; margin: 0; border-bottom: 1px solid #eee; }
+  #c-mensajes { flex: 1; overflow-y: auto; background: #F5F7F6; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .burbuja { max-width: 70%; padding: 8px 12px; border-radius: 16px; font-size: 14px; line-height: 1.4; }
+  .burbuja.suyo { align-self: flex-start; background: #fff; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .burbuja.mio { align-self: flex-end; background: var(--verde); color: #fff; border-bottom-right-radius: 4px; }
+  .burbuja.rapido { background: var(--rojo); color: #fff; font-weight: 600; }
+  .burbuja img { max-width: 240px; max-height: 200px; border-radius: 10px; display: block; cursor: zoom-in; }
+  .burbuja audio { width: 230px; display: block; }
+  .burbuja .t { font-size: 10px; opacity: .7; text-align: right; margin-top: 2px; }
+  .admin form.escribir { flex-direction: row; }
+  .escribir input { flex: 1; }
+  .escribir { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #eee; align-items: center; }
+  .redondo { width: 40px; height: 40px; border-radius: 20px; border: 0; background: #E5F4E4; color: var(--verde-osc); font-size: 17px; cursor: pointer; flex: none; }
+  .redondo.grabando { background: var(--rojo); color: #fff; }
+  .para { display: flex; gap: 6px; } .para label { flex: 1; text-align: center; padding: 7px; border: 1px solid #cfe3d3; border-radius: 10px; cursor: pointer; font-size: 13px; color: var(--verde-osc); }
+  .para input { display: none; } .para label:has(input:checked) { background: var(--verde); color: #fff; border-color: var(--verde); }
+  .tipo-no_pasa { background: #FDE2E2; color: var(--rojo); } .tipo-retraso, .tipo-desvio { background: #FEF3C7; color: #B45309; } .tipo-general { background: #E7F1FB; color: var(--azul); } .tipo-en_ruta { background: #E5F4E4; color: var(--verde-osc); }
   /* v2.13 (spec 009): ventana para dibujar el camino o el desvío */
   #dibujo { position: fixed; inset: 0; background: rgba(15,30,20,.45); display: none; align-items: center; justify-content: center; z-index: 1500; }
   #dibujo .caja { width: 900px; max-width: 96vw; display: flex; flex-direction: column; gap: 10px; }
@@ -95,7 +123,8 @@
   <button data-vista="camiones">Camiones</button>
   <button data-vista="choferes">Choferes</button>
   <button data-vista="rutas">Rutas</button>
-  <button data-vista="mensajes">Mensajes al chofer</button>
+  <button data-vista="chat">Chat<span class="contador" id="chat-contador"></span></button>
+  <button data-vista="avisos">Avisos</button>
   <button data-vista="usuarios">Usuarios</button>
 </nav>
 <main id="v-monitoreo" class="vista activa">
@@ -184,16 +213,41 @@
   </div>
 </section>
 
-<section id="v-mensajes" class="vista admin">
-  <form class="caja" id="f-mensaje">
-    <h2>Mensaje al chofer</h2>
-    <label>Chofer<select id="m-chofer" required></select></label>
-    <label>Mensaje<textarea id="m-texto" rows="4" placeholder="Hoy no pases por la calle 5 de Mayo, está cerrada" required></textarea></label>
-    <button class="btn">Enviar</button>
-    <div class="msg" id="m-msg"></div>
+<!-- v2.14 (spec 010, FR-1011, FR-1012): chat con los choferes -->
+<section id="v-chat" class="vista admin">
+  <div class="caja"><h2>Choferes</h2><div class="lista-ch" id="c-choferes"></div></div>
+  <div class="caja conv">
+    <h2 id="c-titulo">Elige un chofer</h2>
+    <div id="c-mensajes"><small style="color:#6b7280">Aquí verás la conversación.</small></div>
+    <form class="escribir" id="f-chat">
+      <button type="button" class="redondo" id="c-foto" title="Mandar foto">📷</button>
+      <input type="file" id="c-archivo" accept="image/jpeg,image/png" style="display:none">
+      <input id="c-texto" placeholder="Escribe la respuesta…" maxlength="1000" autocomplete="off">
+      <button type="button" class="redondo" id="c-audio" title="Clic para grabar, otro clic para mandar">🎤</button>
+      <button class="btn">Enviar</button>
+    </form>
+    <div class="msg" id="c-msg" style="padding:0 14px 8px"></div>
+  </div>
+</section>
+
+<!-- v2.14 (spec 010, FR-1005): avisos para ciudadanos y choferes -->
+<section id="v-avisos" class="vista admin">
+  <form class="caja" id="f-aviso">
+    <h2>Mandar un aviso</h2>
+    <label>Tipo<select id="a-tipo"><option value="retraso">⏱️ El camión va retrasado</option><option value="no_pasa">🚫 Hoy no pasa el camión</option><option value="general">📢 Aviso general</option></select></label>
+    <label>Ruta (opcional)<select id="a-ruta"></select></label>
+    <label>Para</label>
+    <div class="para">
+      <label><input type="radio" name="a-para" value="ciudadanos" checked>Ciudadanos</label>
+      <label><input type="radio" name="a-para" value="choferes">Choferes</label>
+      <label><input type="radio" name="a-para" value="todos">Todos</label>
+    </div>
+    <label>Mensaje<textarea id="a-mensaje" rows="3" maxlength="300" placeholder="Pasará como 30 min tarde por tráfico en el centro" required></textarea></label>
+    <button class="btn">Enviar aviso</button>
+    <div class="msg" id="a-msg"></div>
   </form>
-  <div class="caja"><h2>Mensajes enviados</h2>
-    <table><thead><tr><th>Hora</th><th>Para</th><th>Mensaje</th></tr></thead><tbody id="t-mensajes"></tbody></table>
+  <div class="caja"><h2>Avisos enviados</h2>
+    <table><thead><tr><th>Hora</th><th>Tipo</th><th>Para</th><th>Mensaje</th></tr></thead><tbody id="t-avisos"></tbody></table>
   </div>
 </section>
 
@@ -337,6 +391,7 @@
     $('login').style.display = 'none';
     $('usuario').textContent = u.nombre;
     cargarTodo();
+    cargarChat();
   }
   function salir() {
     if (token) fetch(API + '/sesion', { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }).catch(() => {});
@@ -371,12 +426,12 @@
         ? `<button class="btn-ambar" data-quitar-desvio="${r.id}">Quitar desvío</button>`
         : `<button class="btn-ambar" data-desvio="${r.id}">Desvío</button>`}</td></tr>`).join('') || '<tr><td colspan="6">Sin recorridos</td></tr>';
       recorridosCache = recorridos;
-      $('t-mensajes').innerHTML = mensajes.map((m) => `<tr><td>${fechaHora(m.fecha)}</td><td>${esc(m.para)}</td><td>${esc(m.texto)}</td></tr>`).join('') || '<tr><td colspan="3">Sin mensajes</td></tr>';
       $('t-usuarios').innerHTML = usuarios.map((u) => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.correo)}</td><td><span class="chip rol-${u.rol}">${ROLES[u.rol]}</span></td><td>${esc(u.colonia)}</td><td>${u.rol === 'administrador' ? '' : `<button class="btn-sec" data-borrar-usuario="${u.id}">Borrar</button>`}</td></tr>`).join('');
       $('res-texto').innerHTML = `<p><b>${resumen.camiones}</b> camiones · <b>${resumen.choferes}</b> choferes · <b>${resumen.ciudadanos}</b> ciudadanos</p><p><b>${resumen.recorridosHoy}</b> recorridos hoy · <b>${resumen.enRuta}</b> en ruta ahora</p>`;
       $('r-camion').innerHTML = opciones(camiones, (c) => c.clave + (c.placas ? ' · ' + c.placas : ''));
       $('r-chofer').innerHTML = opciones(choferes, (c) => c.nombre);
-      $('m-chofer').innerHTML = opciones(choferes, (c) => c.nombre);
+      $('a-ruta').innerHTML = '<option value="">Todas las rutas</option>' + opciones(rutas, (r) => r.nombre);
+      cargarAvisos();
       $('r-ruta').innerHTML = opciones(rutas, (r) => r.nombre);
     } catch (err) { console.warn(err.message); }
   }
@@ -400,7 +455,8 @@
   formulario('f-camion', 'c-msg', '/admin/camiones', () => ({ clave: $('c-clave').value, placas: $('c-placas').value, modelo: $('c-modelo').value }), 'Camión guardado');
   formulario('f-chofer', 'ch-msg', '/admin/choferes', () => ({ nombre: $('ch-nombre').value, correo: $('ch-correo').value, telefono: $('ch-telefono').value, contrasena: $('ch-contrasena').value }), 'Chofer guardado. Ya puede entrar a la app con su correo.');
   formulario('f-recorrido', 'r-msg', '/admin/recorridos', () => ({ camionId: $('r-camion').value, choferId: $('r-chofer').value, rutaId: $('r-ruta').value, fecha: $('r-fecha').value || undefined, indicaciones: $('r-indicaciones').value }), 'Recorrido asignado. El chofer lo verá en su app.');
-  formulario('f-mensaje', 'm-msg', '/admin/mensajes', () => ({ choferId: $('m-chofer').value, texto: $('m-texto').value }), 'Mensaje enviado');
+  formulario('f-aviso', 'a-msg', '/admin/avisos', () => ({ tipo: $('a-tipo').value, rutaId: $('a-ruta').value || undefined,
+    para: document.querySelector('input[name="a-para"]:checked').value, mensaje: $('a-mensaje').value }), 'Aviso enviado. Les llegará como notificación.');
   formulario('f-ruta', 'ru-msg', '/admin/rutas', () => ({ nombre: $('ru-nombre').value, horario: $('ru-horario').value, colonias: elegidas }), 'Ruta guardada');
 
   // Colonias de la ruta, en el orden en que se tocan
@@ -417,6 +473,111 @@
   $('ru-elegidas').addEventListener('click', (e) => { const i = e.target.dataset.quitar; if (i !== undefined) { elegidas.splice(Number(i), 1); pintarColonias(); opcionesColonias(); } });
   $('ru-buscar').addEventListener('input', opcionesColonias);
   pintarColonias(); opcionesColonias();
+
+  // ===================== Versión 2.14 (spec 010): avisos y chat =====================
+  const TIPOS = { no_pasa: '🚫 No pasa', retraso: '⏱️ Retraso', general: '📢 General', en_ruta: '🚛 En ruta', desvio: '⚠️ Desvío' };
+  const PARA = { ciudadanos: 'Ciudadanos', choferes: 'Choferes', todos: 'Todos' };
+  async function cargarAvisos() {
+    const lista = await api('GET', '/admin/avisos');
+    $('t-avisos').innerHTML = lista.slice(0, 40).map((a) => `<tr><td>${fechaHora(a.fecha)}</td><td><span class="chip tipo-${a.tipo}">${TIPOS[a.tipo] || esc(a.tipo)}</span></td><td>${PARA[a.para] || 'Ciudadanos'}</td><td>${esc(a.mensaje)}</td></tr>`).join('') || '<tr><td colspan="4">Sin avisos</td></tr>';
+  }
+
+  let chatAbierto = null; // id del chofer cuya conversación se ve
+  let firmaChat = '';     // para no redibujar si no hay mensajes nuevos
+  const archivoUrl = (n) => `${API}/archivos/${encodeURIComponent(n)}?token=${encodeURIComponent(token)}`;
+  const horaCorta = (iso) => new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const resumen = (m) => !m ? 'Sin mensajes' : m.tipo === 'foto' ? '📷 Foto' : m.tipo === 'audio' ? '🎤 Audio' : (m.tipo === 'rapido' ? '⚠️ ' : '') + m.texto;
+
+  // Lista de choferes con sus no leídos, y el contador de la pestaña (FR-1011)
+  async function cargarChat() {
+    if (!token) return;
+    try {
+      const { total, choferes } = await api('GET', '/admin/chat');
+      const c = $('chat-contador'); c.textContent = total; c.style.display = total ? 'inline' : 'none';
+      $('c-choferes').innerHTML = choferes.map((ch) => `<div class="ch ${ch.id === chatAbierto ? 'activa' : ''}" data-chat="${ch.id}">
+        <span class="ini">${esc(ch.nombre[0] || '?')}</span><div><b>${esc(ch.nombre)}</b><small>${esc(resumen(ch.ultimo))}</small></div>
+        ${ch.noLeidos ? `<span class="num">${ch.noLeidos}</span>` : ''}</div>`).join('') || '<small style="color:#6b7280">Sin choferes</small>';
+      if (chatAbierto && document.querySelector('#v-chat.activa')) await abrirChat(chatAbierto);
+    } catch (err) { console.warn(err.message); }
+  }
+
+  async function abrirChat(id) {
+    const cambio = id !== chatAbierto;
+    chatAbierto = id;
+    const nombre = document.querySelector(`[data-chat="${id}"] b`)?.textContent || 'Chofer';
+    $('c-titulo').textContent = nombre;
+    const lista = await api('GET', `/admin/chat/${id}`);
+    const firma = id + ':' + lista.length;
+    if (!cambio && firma === firmaChat) return;
+    firmaChat = firma;
+    const caja = $('c-mensajes');
+    caja.innerHTML = lista.map((m) => {
+      const mio = m.deId !== id; // lo mandó la administración
+      let cuerpo = esc(m.texto);
+      if (m.tipo === 'foto') cuerpo = `<a href="${archivoUrl(m.archivo)}" target="_blank"><img src="${archivoUrl(m.archivo)}" alt="Foto"></a>${m.texto ? esc(m.texto) : ''}`;
+      if (m.tipo === 'audio') cuerpo = `<audio controls preload="none" src="${archivoUrl(m.archivo)}"></audio>`;
+      if (m.tipo === 'rapido') cuerpo = '⚠️ ' + cuerpo;
+      // Igual que en la app: solo "Falla mecánica" y "Necesito ayuda" van en rojo
+      const urgente = m.tipo === 'rapido' && (m.texto === 'Falla mecánica' || m.texto === 'Necesito ayuda');
+      return `<div class="burbuja ${mio ? 'mio' : 'suyo'} ${urgente ? 'rapido' : ''}">${cuerpo}<div class="t">${horaCorta(m.fecha)}</div></div>`;
+    }).join('') || '<small style="color:#6b7280">Todavía no hay mensajes. Escribe el primero.</small>';
+    caja.scrollTop = caja.scrollHeight;
+    if (cambio) cargarChat();
+  }
+  $('c-choferes').addEventListener('click', (e) => { const el = e.target.closest('[data-chat]'); if (el) abrirChat(Number(el.dataset.chat)); });
+
+  async function mandarChat(cuerpo) {
+    if (!chatAbierto) return aviso('c-msg', 'Primero elige un chofer', false);
+    try { await api('POST', `/admin/chat/${chatAbierto}`, cuerpo); $('c-msg').textContent = ''; firmaChat = ''; await abrirChat(chatAbierto); }
+    catch (err) { aviso('c-msg', err.message, false); }
+  }
+  $('f-chat').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = $('c-texto').value.trim();
+    if (!t) return;
+    $('c-texto').value = '';
+    mandarChat({ tipo: 'texto', texto: t });
+  });
+
+  // Archivo a base64 (sin el "data:...;base64,")
+  const aBase64 = (blob) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.readAsDataURL(blob); });
+
+  // Foto (FR-1012)
+  $('c-foto').addEventListener('click', () => $('c-archivo').click());
+  $('c-archivo').addEventListener('change', async () => {
+    const f = $('c-archivo').files[0];
+    $('c-archivo').value = '';
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) return aviso('c-msg', 'La foto pesa más de 5 MB', false);
+    mandarChat({ tipo: 'foto', archivo: await aBase64(f) });
+  });
+
+  // Audio grabado en el navegador: un clic empieza, otro clic lo manda (máximo 60 s)
+  let grabadora = null, limite = null;
+  $('c-audio').addEventListener('click', async () => {
+    if (grabadora) { grabadora.stop(); return; }
+    if (!chatAbierto) return aviso('c-msg', 'Primero elige un chofer', false);
+    try {
+      const flujo = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const tipo = ['audio/webm', 'audio/ogg', 'audio/mp4'].find((t) => MediaRecorder.isTypeSupported(t)) || '';
+      const partes = [];
+      grabadora = new MediaRecorder(flujo, tipo ? { mimeType: tipo } : undefined);
+      grabadora.ondataavailable = (e) => partes.push(e.data);
+      grabadora.onstop = async () => {
+        clearTimeout(limite); flujo.getTracks().forEach((t) => t.stop());
+        grabadora = null; $('c-audio').classList.remove('grabando'); $('c-audio').textContent = '🎤';
+        const blob = new Blob(partes, { type: tipo });
+        if (blob.size > 0) mandarChat({ tipo: 'audio', archivo: await aBase64(blob) });
+      };
+      grabadora.start();
+      $('c-audio').classList.add('grabando'); $('c-audio').textContent = '■';
+      aviso('c-msg', 'Grabando… clic en ■ para mandar', true);
+      limite = setTimeout(() => grabadora?.stop(), 60_000);
+    } catch { aviso('c-msg', 'No se pudo usar el micrófono. Revisa el permiso del navegador.', false); }
+  });
+
+  // FR-1016: revisa mensajes nuevos cada 5 s
+  setInterval(cargarChat, 5000);
 
   // ===================== Versión 2.13 (spec 009): dibujar camino y desvío =====================
   let rutasCache = [], recorridosCache = [];

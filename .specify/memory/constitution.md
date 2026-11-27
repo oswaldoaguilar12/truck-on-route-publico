@@ -1,11 +1,13 @@
 <!--
 Informe de sincronización (Sync Impact Report)
-- Versión: 4.2.0 → 4.3.0 (MINOR: rutas dibujadas en el mapa)
-- Principio modificado:
-  - I. Alcance por fases → se agrega la Fase 5 (spec 009): el administrador dibuja la ruta en el panel, el mapa pinta de gris lo que el camión ya recorrió y el administrador puede marcar un desvío por bloqueo. Sale de "fuera de alcance" el pintado de la ruta.
-- Principios sin cambio: II, III, IV y V
-- Specs revisadas: specs/009-rutas-dibujadas (nueva)
-- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0 a v4.2.0)
+- Versión: 4.3.0 → 4.4.0 (MINOR: avisos con historial y chat chofer-administrador)
+- Principios modificados:
+  - I. Alcance por fases → se agrega la Fase 6 (spec 010): avisos con historial (leídos y no leídos), nuevos tipos de aviso que manda el administrador y chat entre chofer y administrador con texto, mensajes rápidos, fotos y audios.
+  - II. Guardado → las fotos y audios del chat se guardan en api/datos/archivos/ (no se sube a git).
+  - IV. Sencillo y seguro → límite de tamaño de fotos y audios; el chat es solo entre chofer y administrador.
+- Principios sin cambio: III y V
+- Specs revisadas: specs/010-avisos-y-chat (nueva)
+- Versiones anteriores guardadas en: .specify/memory/historial/ (v1.0.0 a v4.3.0)
 -->
 
 # Truck on Rute Constitution
@@ -26,13 +28,15 @@ También en la Fase 4 (spec 008): un aviso de privacidad que explica qué datos 
 
 **Fase 5 (spec 009):** el administrador dibuja en el mapa del panel web el camino de cada ruta (una línea con puntos). La app y el panel muestran esa línea en verde y pintan de gris la parte que el camión ya recorrió en el recorrido en curso. Si una calle está bloqueada, el administrador dibuja un desvío para ese recorrido; el chofer lo ve en su pantalla con un aviso y la ruta normal regresa al terminar el recorrido. El gris y el ámbar del desvío se usan solo en el mapa.
 
+**Fase 6 (spec 010):** los avisos se guardan en una sección con historial, donde se distinguen los leídos de los no leídos (lo leído se guarda solo en el celular). El administrador puede mandar desde el panel avisos de otros tipos ("hoy no pasa el camión", "el camión va retrasado" o un aviso general) a los ciudadanos, a los choferes o a todos. El chofer y el administrador tienen un chat de ida y vuelta con texto libre, mensajes rápidos (por ejemplo "Falla mecánica", "Tráfico" o "Pausa para comer"), fotos y audios; el panel muestra cuántos mensajes no ha leído el administrador. El ciudadano no entra al chat.
+
 Siguen fuera de alcance: carrito con motores, panel solar, MPU6050, AHT20-BMP280, tiempo estimado de llegada (ETA), notificaciones push con Firebase, varios camiones a la vez en el mapa del ciudadano y nube. Agregar cualquiera de estos requiere una nueva enmienda y preguntar al equipo antes de escribir código.
 
 ### II. Tres partes separadas y un contrato
 
 `firmware/` (C++ con Arduino IDE, TinyGPSPlus por Serial2 a 9600), `api/` (Node.js LTS + Express, JavaScript) y `app-android/` (la app original en Kotlin + Jetpack Compose). El panel web del administrador vive dentro de `api/public/` y lo sirve la misma API.
 
-La API funciona siempre en memoria. Los datos de la Fase 3 (usuarios, camiones, rutas, recorridos, mensajes y avisos) además se guardan en `api/datos/tor-datos.json` (no se sube a git) para que no se pierdan al reiniciar. MySQL es opcional: solo se usa si `.env` tiene `DB_HOST`, y si falla la API sigue funcionando en memoria. Todas las partes usan el formato de `contracts/api-ubicacion.md` (y las rutas nuevas de `contracts/api-v2.6.md` y `specs/004-roles-recorridos-avisos/contracts/api-v3.md`); cada ubicación lleva `fuente` (`gps` o `simulacion`).
+La API funciona siempre en memoria. Los datos de la Fase 3 (usuarios, camiones, rutas, recorridos, mensajes y avisos) además se guardan en `api/datos/tor-datos.json` (no se sube a git) para que no se pierdan al reiniciar. Desde la Fase 6, las fotos y audios del chat se guardan como archivos en `api/datos/archivos/` (tampoco se suben a git). MySQL es opcional: solo se usa si `.env` tiene `DB_HOST`, y si falla la API sigue funcionando en memoria. Todas las partes usan el formato de `contracts/api-ubicacion.md` (y las rutas nuevas de `contracts/api-v2.6.md` y `specs/004-roles-recorridos-avisos/contracts/api-v3.md`); cada ubicación lleva `fuente` (`gps` o `simulacion`).
 
 ### III. Partir de lo que existe
 
@@ -44,7 +48,7 @@ Excepción (desde v2.1.0, spec 003): el login y el registro pueden **validar el 
 
 ### IV. Sencillo, seguro y en español
 
-Código corto, comentado en español, que el equipo pueda explicar en clase. Sin librerías extra para lo que se resuelve con pocas líneas. Los datos personales (nombre, correo, teléfono y colonia) solo se usan como dice el aviso de privacidad, y la ubicación del celular del ciudadano no sale del celular. Sin secretos en git (`secrets.h`, `.env`, `local.properties`). La API no se conecta a MySQL como `root`, sino con un usuario que solo tiene permisos sobre `truck_on_route`. Las contraseñas nunca se guardan en texto: se guarda un hash con `scrypt` (incluido en Node, sin librerías). Las rutas de administrador y de chofer piden un token de sesión y revisan el rol. Errores claros: la API responde `{ "error": "..." }` con 400/401/403/404; la app nunca se cierra por falta de datos.
+Código corto, comentado en español, que el equipo pueda explicar en clase. Sin librerías extra para lo que se resuelve con pocas líneas. Los datos personales (nombre, correo, teléfono y colonia) solo se usan como dice el aviso de privacidad, y la ubicación del celular del ciudadano no sale del celular. Las fotos y audios del chat tienen un límite de tamaño (5 MB cada uno) y solo los pueden ver el chofer de esa conversación y el administrador. Sin secretos en git (`secrets.h`, `.env`, `local.properties`). La API no se conecta a MySQL como `root`, sino con un usuario que solo tiene permisos sobre `truck_on_route`. Las contraseñas nunca se guardan en texto: se guarda un hash con `scrypt` (incluido en Node, sin librerías). Las rutas de administrador y de chofer piden un token de sesión y revisan el rol. Errores claros: la API responde `{ "error": "..." }` con 400/401/403/404; la app nunca se cierra por falta de datos.
 
 ### V. Una etapa a la vez, con prueba
 
@@ -74,5 +78,6 @@ La validación y las rutas de la API tienen tests con `node --test`. Cada etapa 
 | 4.1.0 | 2026-11-25 | MINOR | El equipo pidió el 2026-11-25 "un mini juego tipo memorama para los usuarios" que enseñe los tipos de residuos y su clasificación. Se agrega la Fase 4 al principio I (spec 007). No cambia la API ni el panel web. La enmienda se hizo antes de escribir el código. |
 | 4.2.0 | 2026-11-27 | MINOR | El equipo pidió el 2026-11-26 "meterle las políticas de privacidad". La app pide datos personales al registrarse, así que se agrega el aviso de privacidad (Ley Federal de Protección de Datos Personales en Posesión de los Particulares) a la Fase 4 y una regla en el principio IV (spec 008). La enmienda se hizo antes de escribir el código. |
 | 4.3.0 | 2026-11-27 | MINOR | El equipo pidió el 2026-11-27 que el mapa pinte de gris por donde ya pasó el camión, que el administrador dibuje las rutas y que pueda marcar un desvío cuando haya un bloqueo. Se agrega la Fase 5 al principio I y se quita de "fuera de alcance" el pintado de la ruta (spec 009). La enmienda se hizo antes de escribir el código. |
+| 4.4.0 | 2026-11-27 | MINOR | El equipo pidió el 2026-11-27 una sección de avisos con historial (leídos y no leídos), otros tipos de aviso ("hoy no pasa", "va retrasado") y un chat entre chofer y administrador "en caso de alguna falla" con mensajes rápidos, texto, fotos y audios. Se agrega la Fase 6 al principio I y reglas de guardado (II) y de tamaño y acceso a fotos y audios (IV) (spec 010). La enmienda se hizo antes de escribir el código. |
 
-**Version**: 4.3.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-27
+**Version**: 4.4.0 | **Ratified**: 2026-10-22 | **Last Amended**: 2026-11-27

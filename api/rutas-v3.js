@@ -11,6 +11,23 @@ const CORREO = /^[A-Za-z0-9_%+-]+(\.[A-Za-z0-9_%+-]+)*@[A-Za-z0-9]([A-Za-z0-9-]*
 
 const texto = (v) => (typeof v === 'string' ? v.trim() : '');
 
+// v2.14 (spec 010)
+const TIPOS_AVISO = {
+  no_pasa: 'Hoy no pasa el camión',
+  retraso: 'El camión va retrasado',
+  general: 'Aviso general',
+};
+const PARA = ['ciudadanos', 'choferes', 'todos'];
+// FR-1010: mensajes rápidos del chofer
+const RAPIDOS = ['Falla mecánica', 'Ponchadura', 'Tráfico', 'Pausa para comer', 'Ya terminé', 'Necesito ayuda'];
+const DIA_MS = 24 * 60 * 60 * 1000;
+// Avisos después de "desde" (ISO) o de los últimos "dias"; sin nada, las últimas 12 horas
+function filtroFecha(q) {
+  if (Date.parse(q.desde)) return Date.parse(q.desde);
+  const dias = Math.min(Number(q.dias) || 0, 30);
+  return Date.now() - (dias ? dias * DIA_MS : 12 * 60 * 60 * 1000);
+}
+
 function crearRutasV3(datos, { historialDe = () => [] } = {}) {
   const r = express.Router();
   const sesiones = new Map(); // token -> { usuarioId, vence }
@@ -27,7 +44,8 @@ function crearRutasV3(datos, { historialDe = () => [] } = {}) {
   // Revisa el token y, si se pide, el rol (FR-404)
   function exigir(...roles) {
     return (req, res, next) => {
-      const token = (req.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+      // v2.14: también ?token= para fotos y audios del panel (<img> y <audio> no mandan headers)
+      const token = (req.get('Authorization') || '').replace(/^Bearer\s+/i, '') || String(req.query.token || '');
       const s = sesiones.get(token);
       if (!s || s.vence < Date.now()) {
         sesiones.delete(token);
@@ -176,6 +194,83 @@ function crearRutasV3(datos, { historialDe = () => [] } = {}) {
     res.status(201).json(datos.detalle(datos.crearRecorrido({ ...req.body, fecha })));
   });
 
+  // ---------- v2.14 (spec 010): avisos que manda el administrador (FR-1005, FR-1006) ----------
+  r.get('/admin/avisos', admin, (req, res) => res.json([...datos.d.avisos].reverse()));
+  r.post('/admin/avisos', admin, (req, res) => {
+    const { tipo, para, rutaId } = req.body || {};
+    const mensaje = texto(req.body?.mensaje);
+    if (!TIPOS_AVISO[tipo]) return res.status(400).json({ error: 'Elige el tipo de aviso' });
+    if (!PARA.includes(para)) return res.status(400).json({ error: 'Elige para quién es el aviso' });
+    if (!mensaje) return res.status(400).json({ error: 'Escribe el mensaje del aviso' });
+    if (mensaje.length > 300) return res.status(400).json({ error: 'El mensaje es muy largo (máximo 300 letras)' });
+    const ruta = rutaId ? datos.buscarRuta(rutaId) : null;
+    if (rutaId && !ruta) return res.status(400).json({ error: 'Elige una ruta que exista' });
+    res.status(201).json(datos.crearAviso({
+      tipo, para, ruta: ruta?.nombre || null, colonias: ruta?.colonias || [],
+      titulo: TIPOS_AVISO[tipo],
+      mensaje: ruta ? `${ruta.nombre}: ${mensaje}` : mensaje,
+    }));
+  });
+
+  // ---------- v2.14 (spec 010): chat chofer-administrador (FR-1011 a FR-1015) ----------
+  // Conversación de un chofer: lo que él mandó (a la administración) y lo que le mandaron
+  const conversacion = (choferId) => datos.d.mensajes.filter((m) => m.deId === choferId || m.paraId === choferId);
+  // Los mensajes viejos (v2.8) no tenían "leido" ni "tipo": se toman como leídos y de texto
+  const paraMostrar = (m) => ({ ...m, tipo: m.tipo || 'texto', leido: m.leido !== false, archivo: m.archivo || null });
+  const noLeidosDe = (choferId, deChofer) => conversacion(choferId)
+    .filter((m) => m.leido === false && (deChofer ? m.deId === choferId : m.paraId === choferId)).length;
+
+  // Revisa el cuerpo de un mensaje y lo crea; devuelve el mensaje o responde el error
+  function mandar(req, res, deId, paraId, esChofer) {
+    const c = req.body || {};
+    const tipo = c.tipo || 'texto';
+    let archivo = null;
+    if (tipo === 'texto') {
+      if (!texto(c.texto)) return res.status(400).json({ error: 'Escribe el mensaje' });
+      if (texto(c.texto).length > 1000) return res.status(400).json({ error: 'El mensaje es muy largo' });
+    } else if (tipo === 'rapido') {
+      if (!esChofer || !RAPIDOS.includes(c.texto)) return res.status(400).json({ error: 'Ese mensaje rápido no existe' });
+    } else if (tipo === 'foto' || tipo === 'audio') {
+      const g = datos.guardarArchivo(c.archivo, tipo);
+      if (g.error) return res.status(400).json({ error: g.error });
+      archivo = g.nombre;
+    } else {
+      return res.status(400).json({ error: 'Tipo de mensaje no válido' });
+    }
+    const m = datos.crearMensaje({ deId, paraId, tipo, texto: tipo === 'foto' || tipo === 'audio' ? texto(c.texto) : c.texto, archivo });
+    res.status(201).json(paraMostrar(m));
+  }
+
+  // Lista de choferes con cuántos mensajes sin leer tiene cada uno y el último mensaje
+  r.get('/admin/chat', admin, (req, res) => {
+    const choferes = datos.d.usuarios.filter((u) => u.rol === 'conductor').map((u) => {
+      const ultimo = conversacion(u.id).at(-1);
+      return { id: u.id, nombre: u.nombre, noLeidos: noLeidosDe(u.id, true), ultimo: ultimo ? paraMostrar(ultimo) : null };
+    });
+    choferes.sort((a, b) => (b.ultimo?.fecha || '').localeCompare(a.ultimo?.fecha || ''));
+    res.json({ total: choferes.reduce((s, c) => s + c.noLeidos, 0), choferes });
+  });
+
+  function choferDe(req, res) {
+    const ch = datos.buscarUsuario(req.params.choferId);
+    if (!ch || ch.rol !== 'conductor') { res.status(404).json({ error: 'No existe ese chofer' }); return null; }
+    return ch;
+  }
+  // Al abrir la conversación, lo que mandó el chofer queda leído
+  r.get('/admin/chat/:choferId', admin, (req, res) => {
+    const ch = choferDe(req, res);
+    if (!ch) return;
+    const lista = conversacion(ch.id);
+    let cambio = false;
+    lista.forEach((m) => { if (m.deId === ch.id && m.leido === false) { m.leido = true; cambio = true; } });
+    if (cambio) datos.guardar();
+    res.json(lista.map(paraMostrar));
+  });
+  r.post('/admin/chat/:choferId', admin, (req, res) => {
+    const ch = choferDe(req, res);
+    if (ch) mandar(req, res, req.usuario.id, ch.id, false);
+  });
+
   r.get('/admin/mensajes', admin, (req, res) => {
     res.json([...datos.d.mensajes].reverse().map((m) => ({ ...m, para: datos.buscarUsuario(m.paraId)?.nombre || '—' })));
   });
@@ -229,15 +324,44 @@ function crearRutasV3(datos, { historialDe = () => [] } = {}) {
     res.json(datos.detalle(rec));
   });
 
+  // v2.14: chat del chofer (FR-1009, FR-1010). Al abrirlo, lo del administrador queda leído
+  r.get('/chofer/chat', chofer, (req, res) => {
+    const lista = conversacion(req.usuario.id);
+    let cambio = false;
+    lista.forEach((m) => { if (m.paraId === req.usuario.id && m.leido === false) { m.leido = true; cambio = true; } });
+    if (cambio) datos.guardar();
+    res.json(lista.map(paraMostrar));
+  });
+  r.post('/chofer/chat', chofer, (req, res) => mandar(req, res, req.usuario.id, 0, true));
+  r.get('/chofer/chat/no-leidos', chofer, (req, res) => res.json({ total: noLeidosDe(req.usuario.id, false) }));
+
+  // v2.14 (FR-1007): avisos para choferes o para todos
+  r.get('/chofer/avisos', chofer, (req, res) => {
+    const desde = filtroFecha(req.query);
+    res.json(datos.d.avisos.filter((a) => (a.para === 'choferes' || a.para === 'todos') && Date.parse(a.fecha) > desde));
+  });
+
+  // v2.14 (FR-1014): fotos y audios del chat, solo para el administrador o el chofer de esa conversación
+  r.get('/archivos/:nombre', exigir('administrador', 'conductor'), (req, res) => {
+    const m = datos.d.mensajes.find((x) => x.archivo === req.params.nombre);
+    const ruta = m && datos.rutaArchivo(req.params.nombre);
+    if (!ruta) return res.status(404).json({ error: 'No existe ese archivo' });
+    if (req.usuario.rol === 'conductor' && m.deId !== req.usuario.id && m.paraId !== req.usuario.id) {
+      return res.status(403).json({ error: 'No tienes permiso' });
+    }
+    res.sendFile(ruta);
+  });
+
   r.get('/chofer/mensajes', chofer, (req, res) => {
     res.json(datos.d.mensajes.filter((m) => m.paraId === req.usuario.id).reverse());
   });
 
   // ---------- Ciudadano (sin sesión) ----------
   // Avisos después de una fecha; sin fecha, los de las últimas 12 horas
+  // v2.14 (FR-1007): solo los avisos para ciudadanos o todos; ?dias=7 para el historial
   r.get('/avisos', (req, res) => {
-    const desde = Date.parse(req.query.desde) || Date.now() - 12 * 60 * 60 * 1000;
-    res.json(datos.d.avisos.filter((a) => Date.parse(a.fecha) > desde));
+    const desde = filtroFecha(req.query);
+    res.json(datos.d.avisos.filter((a) => (!a.para || a.para === 'ciudadanos' || a.para === 'todos') && Date.parse(a.fecha) > desde));
   });
 
   // Recorridos en ruta ahora, sin datos internos (ni chofer ni indicaciones)

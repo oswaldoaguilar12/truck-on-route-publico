@@ -34,7 +34,23 @@ data class Recorrido(
 
 data class Mensaje(val id: Int, val texto: String, val fecha: String)
 
-// v2.13: tipo "en_ruta" o "desvio" (FR-912)
+// v2.14 (spec 010): mensaje del chat chofer-administrador.
+// tipo: "texto", "rapido", "foto" o "audio". paraId 0 = la administración.
+data class MensajeChat(
+    val id: Int,
+    val deId: Int,
+    val paraId: Int,
+    val tipo: String,
+    val texto: String,
+    val archivo: String?,
+    val fecha: String,
+    val leido: Boolean
+)
+
+// FR-1010: mensajes rápidos del chofer (los mismos que acepta la API)
+val MENSAJES_RAPIDOS = listOf("Falla mecánica", "Ponchadura", "Tráfico", "Pausa para comer", "Ya terminé", "Necesito ayuda")
+
+// v2.13: tipo "en_ruta" o "desvio" (FR-912); v2.14: también "no_pasa", "retraso" y "general"
 data class Aviso(val id: Int, val titulo: String, val mensaje: String, val fecha: String, val tipo: String = "")
 
 // v2.13 (spec 009): un punto del camino dibujado
@@ -159,9 +175,15 @@ object ApiTor {
     // ---------- Ciudadano ----------
 
     // Avisos después de "desde" (ISO). Sin fecha, la API da los de las últimas 12 horas.
-    suspend fun avisos(desde: String?): List<Aviso> {
-        val ruta = if (desde == null) "/avisos" else "/avisos?desde=" + URLEncoder.encode(desde, "UTF-8")
-        val r = pedir("GET", ruta)
+    // v2.14: dias = 7 da el historial de la sección Avisos; con token, los avisos del chofer.
+    suspend fun avisos(desde: String?, dias: Int? = null, tokenChofer: String? = null): List<Aviso> {
+        val base = if (tokenChofer != null) "/chofer/avisos" else "/avisos"
+        val ruta = when {
+            desde != null -> "$base?desde=" + URLEncoder.encode(desde, "UTF-8")
+            dias != null -> "$base?dias=$dias"
+            else -> base
+        }
+        val r = pedir("GET", ruta, token = tokenChofer)
         if (!r.ok) return emptyList()
         return try {
             val arreglo = JSONArray(r.texto)
@@ -189,6 +211,40 @@ object ApiTor {
             }
         } catch (e: Exception) { emptyList() }
     }
+
+    // ---------- v2.14 (spec 010): chat chofer-administrador ----------
+
+    suspend fun chat(token: String): List<MensajeChat>? {
+        val r = pedir("GET", "/chofer/chat", token = token)
+        if (!r.ok) return null
+        return try {
+            val arreglo = JSONArray(r.texto)
+            (0 until arreglo.length()).map {
+                val m = arreglo.getJSONObject(it)
+                MensajeChat(
+                    m.optInt("id"), m.optInt("deId"), m.optInt("paraId"), m.optString("tipo", "texto"),
+                    m.optString("texto"), if (m.isNull("archivo")) null else m.optString("archivo"),
+                    m.optString("fecha"), m.optBoolean("leido", true)
+                )
+            }
+        } catch (e: Exception) { null }
+    }
+
+    // archivoBase64: la foto (JPG) o el audio (M4A) en base64, solo para tipo "foto" o "audio"
+    suspend fun mandarChat(token: String, tipo: String, texto: String = "", archivoBase64: String? = null): Respuesta {
+        val cuerpo = JSONObject().put("tipo", tipo).put("texto", texto)
+        if (archivoBase64 != null) cuerpo.put("archivo", archivoBase64)
+        return pedir("POST", "/chofer/chat", cuerpo, token)
+    }
+
+    suspend fun chatNoLeidos(token: String): Int {
+        val r = pedir("GET", "/chofer/chat/no-leidos", token = token)
+        return if (r.ok) try { JSONObject(r.texto).optInt("total") } catch (e: Exception) { 0 } else 0
+    }
+
+    // Dirección de una foto o audio del chat (la API acepta el token en ?token= para poder mostrarla directo)
+    fun urlArchivo(nombre: String, token: String): String =
+        "${BuildConfig.API_URL}/archivos/" + URLEncoder.encode(nombre, "UTF-8") + "?token=" + URLEncoder.encode(token, "UTF-8")
 
     // Última ubicación de un camión en particular
     suspend fun ubicacionDe(camion: String): Ubicacion? {

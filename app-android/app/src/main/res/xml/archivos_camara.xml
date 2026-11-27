@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Versión 2.14 (spec 010): carpeta donde la cámara deja la foto del chat (caché de la app) -->
+<paths>
+    <cache-path name="fotos_chat" path="fotos/" />
+</paths>

@@ -73,6 +73,23 @@ object Sesion {
         contexto.getSharedPreferences(PREFERENCIAS, Context.MODE_PRIVATE).edit().putString("ultimo_aviso", fecha).apply()
     }
 
+    // v2.14 (spec 010, FR-1003): fecha (ISO) del aviso más nuevo que el usuario ya vio en la sección Avisos.
+    // Se guarda solo en el celular. "clave" separa al ciudadano del chofer.
+    fun avisosLeidosHasta(contexto: Context, clave: String = "ciudadano"): String? =
+        contexto.getSharedPreferences(PREFERENCIAS, Context.MODE_PRIVATE).getString("leidos_$clave", null)
+
+    fun guardarAvisosLeidosHasta(contexto: Context, fecha: String, clave: String = "ciudadano") {
+        contexto.getSharedPreferences(PREFERENCIAS, Context.MODE_PRIVATE).edit().putString("leidos_$clave", fecha).apply()
+    }
+
+    // v2.14: último aviso del chofer que ya se notificó
+    fun ultimoAvisoChofer(contexto: Context): String? =
+        contexto.getSharedPreferences(PREFERENCIAS, Context.MODE_PRIVATE).getString("ultimo_aviso_chofer", null)
+
+    fun guardarUltimoAvisoChofer(contexto: Context, fecha: String) {
+        contexto.getSharedPreferences(PREFERENCIAS, Context.MODE_PRIVATE).edit().putString("ultimo_aviso_chofer", fecha).apply()
+    }
+
     // Recorridos de los que ya se avisó "camión cerca" (una vez por recorrido, FR-410)
     fun yaAvisadoCerca(contexto: Context, recorridoId: Int): Boolean =
         contexto.getSharedPreferences(PREFERENCIAS, Context.MODE_PRIVATE)

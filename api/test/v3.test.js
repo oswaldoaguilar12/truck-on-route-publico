@@ -246,3 +246,88 @@ test('el administrador dibuja el camino, se pinta el avance y pone un desvío qu
   const lista = (await pedir('GET', '/admin/recorridos', null, t)).cuerpo.find((x) => x.id === rec.id);
   assert.strictEqual(lista.desvio, undefined);
 });
+
+// ---------------------------------------------------------------------------
+// Versión 2.14 (spec 010): avisos por destinatario y chat chofer-administrador
+// ---------------------------------------------------------------------------
+// Archivos mínimos con los primeros bytes de cada formato
+const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]).toString('base64');
+const M4A = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypM4A '), Buffer.alloc(8)]).toString('base64');
+
+test('el administrador manda avisos a ciudadanos o choferes y cada quien ve solo los suyos', async () => {
+  const t = await entrar('admin@truckonroute.mx', 'Admin2026');
+  const tc = await entrar('chofer@truckonroute.mx', 'Chofer2026');
+  const antes = new Date().toISOString();
+  assert.strictEqual((await pedir('POST', '/admin/avisos', { tipo: 'retraso', para: 'ciudadanos', mensaje: 'x' })).status, 401);
+  assert.strictEqual((await pedir('POST', '/admin/avisos', { tipo: 'otro', para: 'todos', mensaje: 'x' }, t)).status, 400);
+  assert.strictEqual((await pedir('POST', '/admin/avisos', { tipo: 'general', para: 'vecinos', mensaje: 'x' }, t)).status, 400);
+  assert.strictEqual((await pedir('POST', '/admin/avisos', { tipo: 'general', para: 'todos', mensaje: '  ' }, t)).status, 400);
+
+  const ruta = (await pedir('GET', '/admin/rutas', null, t)).cuerpo[0];
+  const a1 = await pedir('POST', '/admin/avisos', { tipo: 'retraso', para: 'ciudadanos', rutaId: ruta.id, mensaje: 'Pasa 30 min tarde' }, t);
+  assert.strictEqual(a1.status, 201);
+  assert.strictEqual(a1.cuerpo.titulo, 'El camión va retrasado');
+  assert.strictEqual(a1.cuerpo.mensaje, `${ruta.nombre}: Pasa 30 min tarde`);
+  await pedir('POST', '/admin/avisos', { tipo: 'general', para: 'choferes', mensaje: 'Junta a las 6' }, t);
+  await pedir('POST', '/admin/avisos', { tipo: 'no_pasa', para: 'todos', mensaje: 'Día festivo' }, t);
+
+  const q = `?desde=${encodeURIComponent(antes)}`;
+  const ciudadano = (await pedir('GET', '/avisos' + q)).cuerpo.map((a) => a.tipo);
+  assert.deepStrictEqual(ciudadano.sort(), ['no_pasa', 'retraso']);
+  const delChofer = (await pedir('GET', '/chofer/avisos' + q, null, tc)).cuerpo.map((a) => a.mensaje);
+  assert.deepStrictEqual(delChofer.sort(), ['Día festivo', 'Junta a las 6']);
+  // Historial de 7 días
+  assert.ok((await pedir('GET', '/avisos?dias=7')).cuerpo.length >= 2);
+});
+
+test('chat: el chofer manda rápido, texto, foto y audio; el admin ve no leídos y contesta', async () => {
+  const t = await entrar('admin@truckonroute.mx', 'Admin2026');
+  const tc = await entrar('chofer@truckonroute.mx', 'Chofer2026');
+  const yo = (await pedir('GET', '/sesion', null, tc)).cuerpo.usuario;
+
+  assert.strictEqual((await pedir('POST', '/chofer/chat', { tipo: 'rapido', texto: 'Falla mecánica' }, tc)).status, 201);
+  assert.strictEqual((await pedir('POST', '/chofer/chat', { tipo: 'rapido', texto: 'Vámonos' }, tc)).status, 400);
+  assert.strictEqual((await pedir('POST', '/chofer/chat', { tipo: 'texto', texto: '' }, tc)).status, 400);
+  assert.strictEqual((await pedir('POST', '/chofer/chat', { tipo: 'texto', texto: 'Bajo por unos tacos' }, tc)).status, 201);
+  const foto = await pedir('POST', '/chofer/chat', { tipo: 'foto', archivo: JPG }, tc);
+  assert.strictEqual(foto.status, 201);
+  assert.match(foto.cuerpo.archivo, /\.jpg$/);
+  // Un audio que dice ser foto se rechaza (se revisan los primeros bytes)
+  assert.strictEqual((await pedir('POST', '/chofer/chat', { tipo: 'foto', archivo: M4A }, tc)).status, 400);
+  assert.strictEqual((await pedir('POST', '/chofer/chat', { tipo: 'audio', archivo: M4A }, tc)).status, 201);
+  // Más de 5 MB
+  const grande = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(5 * 1024 * 1024)]).toString('base64');
+  assert.strictEqual((await pedir('POST', '/chofer/chat', { tipo: 'foto', archivo: grande }, tc)).status, 400);
+
+  // El ciudadano no entra al chat
+  const tci = await entrar('ana@gmail.com', 'Ana2026');
+  assert.strictEqual((await pedir('GET', '/chofer/chat', null, tci)).status, 403);
+  assert.strictEqual((await pedir('GET', '/admin/chat', null, tci)).status, 403);
+
+  // FR-1011: el admin ve 4 sin leer de ese chofer; al abrir quedan leídos
+  let lista = (await pedir('GET', '/admin/chat', null, t)).cuerpo;
+  assert.strictEqual(lista.choferes.find((c) => c.id === yo.id).noLeidos, 4);
+  assert.ok(lista.total >= 4);
+  const conv = (await pedir('GET', `/admin/chat/${yo.id}`, null, t)).cuerpo;
+  assert.ok(conv.some((m) => m.tipo === 'audio'));
+  lista = (await pedir('GET', '/admin/chat', null, t)).cuerpo;
+  assert.strictEqual(lista.choferes.find((c) => c.id === yo.id).noLeidos, 0);
+
+  // El admin contesta con texto y foto; el chofer los ve como no leídos
+  assert.strictEqual((await pedir('POST', `/admin/chat/${yo.id}`, { tipo: 'texto', texto: 'Va, ya mandé al mecánico' }, t)).status, 201);
+  assert.strictEqual((await pedir('POST', `/admin/chat/${yo.id}`, { tipo: 'foto', archivo: JPG }, t)).status, 201);
+  assert.strictEqual((await pedir('POST', `/admin/chat/${yo.id}`, { tipo: 'rapido', texto: 'Tráfico' }, t)).status, 400);
+  assert.strictEqual((await pedir('GET', '/chofer/chat/no-leidos', null, tc)).cuerpo.total >= 2, true);
+  const delChofer = (await pedir('GET', '/chofer/chat', null, tc)).cuerpo;
+  assert.ok(delChofer.some((m) => m.texto === 'Hoy empieza a las 7' || m.texto === 'Va, ya mandé al mecánico'));
+  assert.strictEqual((await pedir('GET', '/chofer/chat/no-leidos', null, tc)).cuerpo.total, 0);
+
+  // FR-1014: el archivo lo bajan el chofer y el admin (también con ?token=), nadie más
+  const url = `${base}/archivos/${foto.cuerpo.archivo}`;
+  assert.strictEqual((await fetch(url)).status, 401);
+  assert.strictEqual((await fetch(url, { headers: { Authorization: `Bearer ${tc}` } })).status, 200);
+  assert.strictEqual((await fetch(`${url}?token=${t}`)).status, 200);
+  const otro = await entrar('pedro@truckonroute.mx', 'pedro123');
+  assert.strictEqual((await fetch(url, { headers: { Authorization: `Bearer ${otro}` } })).status, 403);
+  assert.strictEqual((await fetch(`${base}/archivos/..%2Ftor-datos.json?token=${t}`)).status, 404);
+});

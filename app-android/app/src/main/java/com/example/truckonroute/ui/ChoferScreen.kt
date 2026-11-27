@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.truckonroute.avisos.Notificaciones
+import com.example.truckonroute.avisos.Vigilancia
 import com.example.truckonroute.data.ApiTor
 import com.example.truckonroute.data.Mensaje
 import com.example.truckonroute.data.Recorrido
@@ -57,6 +59,39 @@ fun ChoferScreen(usuario: Usuario, onLogout: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var ocupado by remember { mutableStateOf(false) }
     var recargar by remember { mutableIntStateOf(0) }
+    // v2.14 (spec 010): chat con el administrador y avisos para choferes
+    var verChat by remember { mutableStateOf(false) }
+    var verAvisos by remember { mutableStateOf(false) }
+    var chatSinLeer by remember { mutableIntStateOf(0) }
+    var avisosSinLeer by remember { mutableIntStateOf(0) }
+
+    // Con la pantalla abierta: revisa cada 10 s mensajes sin leer y avisos nuevos, y los notifica (FR-1008)
+    LaunchedEffect(verChat, verAvisos) {
+        var anteriorChat = -1
+        while (true) {
+            val n = ApiTor.chatNoLeidos(token)
+            if (!verChat && anteriorChat >= 0 && n > anteriorChat) {
+                Notificaciones.mostrar(contexto, 3000, "Mensaje del administrador", "Tienes $n mensaje(s) sin leer en el chat.")
+            }
+            anteriorChat = n
+            chatSinLeer = if (verChat) 0 else n
+            // Avisos para choferes: la primera vez solo se guarda la fecha, para no notificar avisos viejos
+            val ultimo = Sesion.ultimoAvisoChofer(contexto)
+            if (ultimo == null) Sesion.guardarUltimoAvisoChofer(contexto, Vigilancia.ahoraIso())
+            else {
+                val nuevos = ApiTor.avisos(ultimo, tokenChofer = token)
+                nuevos.forEach { Notificaciones.mostrar(contexto, 4000 + it.id, it.titulo, it.mensaje) }
+                nuevos.maxByOrNull { it.fecha }?.let { Sesion.guardarUltimoAvisoChofer(contexto, it.fecha) }
+            }
+            avisosSinLeer = contarNoLeidos(ApiTor.avisos(null, dias = 7, tokenChofer = token), Sesion.avisosLeidosHasta(contexto, "chofer"))
+            delay(10_000)
+        }
+    }
+    if (verChat) { ChatScreen(token, usuario.id, onAtras = { verChat = false }); return }
+    if (verAvisos) {
+        AvisosScreen("chofer", cargar = { ApiTor.avisos(null, dias = 7, tokenChofer = token) }, onAtras = { verAvisos = false; avisosSinLeer = 0 })
+        return
+    }
 
     // Pide recorridos y mensajes al abrir y cada 20 s
     LaunchedEffect(recargar) {
@@ -99,6 +134,13 @@ fun ChoferScreen(usuario: Usuario, onLogout: () -> Unit) {
                         Text(saludo(), color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                         Text(usuario.nombre, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     }
+                    // v2.14 (FR-1001, FR-1004): campanita con los avisos sin leer
+                    BadgedBox(badge = { if (avisosSinLeer > 0) Badge(containerColor = RojoTor) { Text("$avisosSinLeer") } }) {
+                        IconButton(onClick = { verAvisos = true }, modifier = Modifier.background(Color.White.copy(alpha = 0.16f), CircleShape)) {
+                            Icon(Icons.Default.Notifications, "Avisos", tint = Color.White)
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
                     IconButton(onClick = onLogout, modifier = Modifier.background(Color.White.copy(alpha = 0.16f), CircleShape)) {
                         Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White)
                     }
@@ -135,25 +177,28 @@ fun ChoferScreen(usuario: Usuario, onLogout: () -> Unit) {
             }
             error?.let { Text(it, color = Color(0xFFB00020)) }
 
-            // Mensajes del administrador
-            TarjetaTor(Modifier.entradaSuave(retrasoMs = 160)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(40.dp).background(VerdeClaroTor, CircleShape), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.ChatBubbleOutline, null, tint = VerdeOscuro, modifier = Modifier.size(20.dp))
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text("Mensajes del administrador", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextoOscuroTor)
-                            if (mensajes.isEmpty()) Text("Todo tranquilo, sin mensajes nuevos", fontSize = 12.sp, color = TextoGrisTor)
-                        }
+            // v2.14 (spec 010, FR-1009): los mensajes del administrador ahora viven en el chat.
+            // Aquí se ve el último y el botón para abrir el chat con los no leídos.
+            TarjetaTor(Modifier.entradaSuave(retrasoMs = 160).clickable { verChat = true }) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(44.dp).background(VerdeClaroTor, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.ChatBubbleOutline, null, tint = VerdeOscuro, modifier = Modifier.size(22.dp))
                     }
-                    mensajes.forEach { m ->
-                        Column(Modifier.fillMaxWidth().background(FondoTor, RoundedCornerShape(14.dp)).padding(12.dp)) {
-                            Text(horaCorta(m.fecha), fontSize = 11.sp, color = TextoGrisTor)
-                            Text(m.texto, fontSize = 14.sp, color = TextoOscuroTor)
-                        }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Chat con el administrador", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextoOscuroTor)
+                        Text(
+                            mensajes.firstOrNull()?.texto?.takeIf { it.isNotBlank() } ?: "Avisa de una falla, tráfico o una pausa",
+                            fontSize = 12.sp, color = TextoGrisTor, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
                     }
+                    if (chatSinLeer > 0) {
+                        Box(Modifier.background(VerdeTor, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                            Text("$chatSinLeer", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Icon(Icons.Default.ChevronRight, null, tint = TextoGrisTor)
                 }
             }
         }
@@ -292,12 +337,28 @@ private fun MapaChofer(rec: Recorrido) {
             AvisoDesvio("Ruta cambiada por bloqueo", "$motivo. Sigue la línea amarilla.", Modifier.rebote(motivo))
         }
         if (enCurso != null && (enCurso.trazo.isNotEmpty() || enCurso.desvio.isNotEmpty())) {
-            MapaCamion(
-                datos = datos,
-                seguirCamion = seguir,
-                onMoverMapa = { seguir = false },
-                modifier = Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(18.dp))
-            )
+            Box(Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(18.dp))) {
+                MapaCamion(
+                    datos = datos,
+                    seguirCamion = seguir,
+                    onMoverMapa = { seguir = false },
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Botón para volver a centrar el mapa en el camión (igual que en Inicio)
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp)
+                        .size(42.dp)
+                        .shadow(6.dp, CircleShape)
+                        .background(Color.White, CircleShape)
+                        .clip(CircleShape)
+                        .clickable { seguir = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.MyLocation, "Centrar en el camión", tint = if (seguir) Verde else VerdeOscuro, modifier = Modifier.size(22.dp))
+                }
+            }
             LeyendaMapa(conDesvio = enCurso.desvio.isNotEmpty(), textoPaso = "Ya pasaste")
         }
     }

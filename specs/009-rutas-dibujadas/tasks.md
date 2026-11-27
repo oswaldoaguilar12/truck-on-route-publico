@@ -12,3 +12,4 @@
 - [X] T908 Compilar en Android Studio sin errores (SC-903) — compiló el 2026-11-27 (equipo)
 - [ ] T909 En el emulador: dibujar la ruta, simular, ver el gris y poner un desvío con las tres cuentas (SC-902, SC-903) — equipo
 - [X] T910 Simulación: `simular.js` sigue el camino dibujado y el desvío del recorrido en curso de CAMION-01; sin camino usa las coordenadas de ejemplo (petición del equipo al ver la demo, 2026-11-27; solo herramienta de prueba, no cambia la API ni la app)
+- [ ] T911 App: sin recorrido en curso, el rastro verde solo muestra la última vuelta del camión (corta en huecos de más de 2 min o saltos de más de 300 m) para que no se encimen las líneas (petición del equipo, 2026-11-27) — programada, falta compilar y verlo en el emulador
