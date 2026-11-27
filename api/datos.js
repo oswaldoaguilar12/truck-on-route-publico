@@ -6,7 +6,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { hashContrasena } = require('./seguridad');
 
-const ARCHIVO_POR_DEFECTO = path.join(__dirname, 'datos', 'tor-datos.json');
+// v2.15 (spec 011, FR-1103): en Railway la carpeta de datos es un Volume que se indica con DATOS_DIR
+const ARCHIVO_POR_DEFECTO = path.join(process.env.DATOS_DIR || path.join(__dirname, 'datos'), 'tor-datos.json');
 
 function vacio() {
   return { siguienteId: 1, usuarios: [], camiones: [], rutas: [], recorridos: [], mensajes: [], avisos: [] };
@@ -213,9 +214,15 @@ function crearDatos(archivo = ARCHIVO_POR_DEFECTO) {
 
   // ---------- Datos de ejemplo ----------
   // Solo la primera vez (cuando no hay usuarios). La cuenta del administrador sale de .env.
-  function sembrar() {
+  // v2.15 (spec 011, FR-1105): en producción solo se crea el administrador y CAMION-01,
+  // porque las contraseñas de las cuentas de ejemplo están publicadas en el LEEME
+  function sembrar({ produccion = false } = {}) {
     if (d.usuarios.length > 0) return false;
     crearUsuario({ nombre: 'Administrador', correo: process.env.ADMIN_CORREO || 'admin@truckonroute.mx', contrasena: process.env.ADMIN_CONTRASENA || 'Admin2026', rol: 'administrador' });
+    if (produccion) {
+      crearCamion({ clave: 'CAMION-01', placas: '', modelo: '' });
+      return true;
+    }
     const chofer = crearUsuario({ nombre: 'Juan Pérez (chofer de ejemplo)', correo: 'chofer@truckonroute.mx', telefono: '7761234567', contrasena: 'Chofer2026', rol: 'conductor' });
     crearUsuario({ nombre: 'Ana López (ciudadana de ejemplo)', correo: 'ana@gmail.com', telefono: '7769876543', colonia: 'Centro', contrasena: 'Ana2026', rol: 'ciudadano' });
     const camion = crearCamion({ clave: 'CAMION-01', placas: 'PUE-123-A', modelo: 'Recolector 2018' });

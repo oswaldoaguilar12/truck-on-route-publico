@@ -1,6 +1,6 @@
 {
   "name": "truck-on-rute-api",
-  "version": "2.6.0",
+  "version": "2.15.0",
   "description": "API de Truck on Rute: recibe y entrega la última ubicación del camión",
   "main": "server.js",
   "scripts": {
@@ -12,5 +12,8 @@
     "express": "^5.1.0",
     "mysql2": "^3.11.0",
     "leaflet": "^1.9.4"
+  },
+  "engines": {
+    "node": ">=20.12"
   }
 }

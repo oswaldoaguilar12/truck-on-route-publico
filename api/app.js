@@ -4,6 +4,7 @@
 // Versión 2.8 (spec 004): cuentas con rol, administrador, chofer y avisos (rutas-v3.js).
 
 const path = require('node:path');
+const crypto = require('node:crypto');
 const express = require('express');
 const { validar } = require('./validar');
 const { buscarColonias } = require('./colonias');
@@ -26,14 +27,19 @@ function crearApp(opciones = {}) {
 
   // Datos de la Fase 3: se leen del archivo JSON y, la primera vez, se crean los de ejemplo
   const datos = crearDatos(opciones.archivoDatos);
-  if (datos.sembrar()) console.log('Primera vez: se crearon los datos de ejemplo (ver LEEME.md, "Cuentas de ejemplo").');
+  const produccion = opciones.produccion ?? process.env.PRODUCCION === '1';
+  if (datos.sembrar({ produccion })) {
+    console.log(produccion
+      ? 'Primera vez (producción): se creó solo la cuenta del administrador y CAMION-01.'
+      : 'Primera vez: se crearon los datos de ejemplo (ver LEEME.md, "Cuentas de ejemplo").');
+  }
 
   // v2.14: 8 MB para que quepan fotos y audios de 5 MB en base64 (spec 010)
   app.use(express.json({ limit: '8mb' }));
   // Permite que el panel web se abra desde otra dirección (por ejemplo, otro puerto)
   app.use((req, res, next) => {
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Clave-GPS');
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
@@ -57,8 +63,18 @@ function crearApp(opciones = {}) {
     });
   });
 
+  // v2.15 (spec 011, FR-1104): si hay CLAVE_GPS, solo el ESP32 o simular.js con esa clave pueden mandar ubicaciones
+  const claveGps = opciones.claveGps ?? process.env.CLAVE_GPS ?? '';
+  function claveCorrecta(recibida) {
+    if (!claveGps) return true; // sin clave configurada funciona como antes (trabajo en local)
+    const a = Buffer.from(String(recibida || ''));
+    const b = Buffer.from(claveGps);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+
   // El ESP32 (o simular.js) envía una ubicación
   app.post('/ubicacion', async (req, res) => {
+    if (!claveCorrecta(req.get('X-Clave-GPS'))) return res.status(401).json({ error: 'Falta la clave del GPS o no es correcta' });
     const resultado = validar(req.body);
     if (!resultado.ok) return res.status(400).json({ error: resultado.error });
 

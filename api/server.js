@@ -11,7 +11,21 @@ const db = require('./db');
 
 const PORT = process.env.PORT || 3000;
 
+// v2.15 (spec 011, FR-1105): en producción (Railway) no se arranca con una contraseña de administrador débil o de ejemplo
+function revisarProduccion() {
+  if (process.env.PRODUCCION !== '1') return;
+  const c = process.env.ADMIN_CONTRASENA || '';
+  const deEjemplo = ['Admin2026', 'Chofer2026', 'Ana2026'];
+  if (c.length < 8 || deEjemplo.includes(c)) {
+    console.error('PRODUCCION=1 pero ADMIN_CONTRASENA falta, tiene menos de 8 caracteres o es una de ejemplo.');
+    console.error('Ponla en las variables de Railway (o en .env) y vuelve a desplegar. Ver docs/railway.md.');
+    process.exit(1);
+  }
+  if (!process.env.CLAVE_GPS) console.warn('Aviso: no hay CLAVE_GPS; cualquiera podría mandar ubicaciones a POST /ubicacion.');
+}
+
 async function iniciar() {
+  revisarProduccion();
   await db.conectar(); // opcional: solo si .env tiene DB_HOST
   const app = crearApp();
 

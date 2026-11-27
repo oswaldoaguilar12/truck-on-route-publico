@@ -116,10 +116,12 @@ async function enviarSiguiente() {
   try {
     const respuesta = await fetch(`${API_URL}/ubicacion`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // v2.15 (spec 011): la misma clave del GPS que tiene la API, si la hay
+      headers: { 'Content-Type': 'application/json', ...(process.env.CLAVE_GPS ? { 'X-Clave-GPS': process.env.CLAVE_GPS } : {}) },
       body: JSON.stringify({ camion: CAMION, lat, lng, fuente: 'simulacion' }),
     });
     console.log(`Enviado punto ${texto} (${lat}, ${lng}) → ${respuesta.status}`);
+    if (respuesta.status === 401) console.log('La API pide la clave del GPS: pon la misma CLAVE_GPS en tu .env');
   } catch {
     console.log(`No se pudo conectar con la API en ${API_URL}. ¿Está encendida (npm start)?`);
   }
